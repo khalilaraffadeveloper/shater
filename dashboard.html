@@ -1,0 +1,2082 @@
+﻿<!DOCTYPE html>
+<!-- Shater Dashboard v20260808 -->
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شاطر - لوحة التحكم</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css?v=20260818" />
+</head>
+<body class="bg-light">
+
+    <!-- SIDEBAR (Offcanvas for mobile, fixed for desktop) -->
+    <nav class="sidebar d-none d-md-flex flex-column" id="sidebar">
+        <div class="sidebar-header text-center py-4">
+<img src="img/logo.png" alt="شاطر" class="sidebar-logo mb-2">
+                <h4 class="text-white fw-bold mb-0">شاطر</h4>
+            <small class="text-gold">لوحة تحكم الإدارة</small>
+        </div>
+        <div class="sidebar-nav flex-grow-1 px-3 py-2">
+            <a href="#" class="sidebar-link active" data-page="map">
+                <i class="bi bi-geo-alt-fill"></i> الخريطة المباشرة
+            </a>
+            <a href="#" class="sidebar-link" data-page="reports">
+                <i class="bi bi-graph-up-arrow"></i> التقارير والإحصائيات
+            </a>
+            <a href="#" class="sidebar-link" data-page="drivers">
+                <i class="bi bi-people-fill"></i> إدارة السائقين
+                <span class="nav-badge" id="driversNavBadge"></span>
+            </a>
+            <a href="#" class="sidebar-link" data-page="customers">
+                <i class="bi bi-person-badge-fill"></i> إدارة الزبائن
+                <span class="nav-badge" id="customersNavBadge"></span>
+            </a>
+            <a href="#" class="sidebar-link" data-page="devices">
+                <i class="bi bi-phone-fill"></i> الأجهزة
+            </a>
+            <a href="#" class="sidebar-link" data-page="unregistered-customers">
+                <i class="bi bi-person-x-fill"></i> الزبناء غير المسجلين
+            </a>
+<a href="#" class="sidebar-link" data-page="deliveries">
+    <i class="bi bi-truck"></i> طلبات التوصيل
+    <span class="nav-badge" id="deliveriesNavBadge"></span>
+</a>
+<a href="#" class="sidebar-link" data-page="rides">
+    <i class="bi bi-journal-text"></i> سجل الرحلات
+    <span class="nav-badge" id="ridesNavBadge"></span>
+</a>
+            <a href="#" class="sidebar-link" data-page="settings">
+                <i class="bi bi-gear-fill"></i> الإعدادات
+            </a>
+            
+            <a href="#" class="sidebar-link" data-page="messages">
+                <i class="bi bi-envelope-fill"></i> الرسائل
+            </a>
+            <a href="#" class="sidebar-link" data-page="announcements">
+                <i class="bi bi-bullhorn-fill"></i> إعلانات السائقين
+            </a>
+            <a href="#" class="sidebar-link" data-page="customer-announcements">
+                <i class="bi bi-bullhorn-fill"></i> إعلانات الزبائن
+            </a>
+            <a href="#" class="sidebar-link admin-only" data-page="admins">
+                <i class="bi bi-shield-lock-fill"></i> إدارة المشرفين
+            </a>
+            <a href="#" class="sidebar-link" data-page="promotions">
+                <i class="bi bi-megaphone-fill"></i> العروض والنشاطات
+            </a>
+            <a href="#" class="sidebar-link" data-page="products">
+                <i class="bi bi-shop"></i> المتجر والمنتجات
+                <span class="nav-badge" id="productsNavBadge"></span>
+            </a>
+            <a href="#" class="sidebar-link" data-page="stores">
+                <i class="bi bi-store"></i> المتاجر والنشاطات الذكية
+            </a>
+            <a href="#" class="sidebar-link" data-page="ladies">
+                <i class="bi bi-gem"></i> متجر عرفه للسيدات
+            </a>
+        </div>
+        <div class="sidebar-stats px-3 pb-3">
+            <div class="row g-2">
+                <div class="col-6">
+                    <div class="card bg-gold-dark text-center py-2 border-0 rounded-3">
+                        <div class="fs-4 fw-bold text-white" id="onlineCount">0</div>
+                        <small class="text-white-50">سائق متاح</small>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="card bg-purple text-center py-2 border-0 rounded-3">
+                        <div class="fs-4 fw-bold text-white" id="rideCount">0</div>
+                        <small class="text-white-50">رحلة نشطة</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MOBILE SIDEBAR (Offcanvas) -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="sidebarOffcanvas">
+        <div class="offcanvas-header bg-dark-blue text-white">
+            <h5 class="fw-bold"><i class="bi bi-car-front me-2"></i>شاطر</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <div class="offcanvas-body bg-dark-blue p-0">
+            <div class="d-flex flex-column h-100">
+                <div class="p-3">
+                    <a href="#" class="sidebar-link active" data-page="map" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-geo-alt-fill"></i> الخريطة المباشرة
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="reports" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-graph-up-arrow"></i> التقارير والإحصائيات
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="drivers" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-people-fill"></i> إدارة السائقين
+                        <span class="nav-badge" id="driversNavBadgeMobile"></span>
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="customers" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-person-badge-fill"></i> إدارة الزبائن
+                        <span class="nav-badge" id="customersNavBadgeMobile"></span>
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="devices" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-phone-fill"></i> الأجهزة
+                    </a>
+            <a href="#" class="sidebar-link" data-page="unregistered-customers" data-bs-dismiss="offcanvas">
+                <i class="bi bi-person-x-fill"></i> الزبناء غير المسجلين
+            </a>
+            <a href="#" class="sidebar-link" data-page="deliveries" data-bs-dismiss="offcanvas">
+                <i class="bi bi-truck"></i> طلبات التوصيل
+                <span class="nav-badge" id="deliveriesNavBadgeMobile"></span>
+            </a>
+            <a href="#" class="sidebar-link" data-page="rides" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-journal-text"></i> سجل الرحلات
+                        <span class="nav-badge" id="ridesNavBadgeMobile"></span>
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="settings" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-gear-fill"></i> الإعدادات
+                    </a>
+                    
+                    <a href="#" class="sidebar-link" data-page="messages" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-envelope-fill"></i> الرسائل
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="announcements" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-bullhorn-fill"></i> إعلانات السائقين
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="customer-announcements" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-bullhorn-fill"></i> إعلانات الزبائن
+                    </a>
+                    <a href="#" class="sidebar-link admin-only" data-page="admins" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-shield-lock-fill"></i> إدارة المشرفين
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="promotions" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-megaphone-fill"></i> العروض والنشاطات
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="products" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-shop"></i> المتجر والمنتجات
+                        <span class="nav-badge" id="productsNavBadgeMobile"></span>
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="stores" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-store"></i> المتاجر والنشاطات الذكية
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="ladies" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-gem"></i> متجر عرفه للسيدات
+                    </a>
+                </div>
+                <div class="px-3 pb-3 mt-auto">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="card bg-gold-dark text-center py-2 border-0 rounded-3">
+                                <div class="fs-4 fw-bold text-white onlineCount-mobile">0</div>
+                                <small class="text-white-50">سائق متاح</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="card bg-purple text-center py-2 border-0 rounded-3">
+                                <div class="fs-4 fw-bold text-white rideCount-mobile">0</div>
+                                <small class="text-white-50">رحلة نشطة</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-wrapper">
+        <!-- TOP HEADER -->
+        <header class="top-bar bg-white shadow-sm d-flex align-items-center justify-content-between px-3 px-md-4 py-2">
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn d-md-none" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas">
+                    <i class="bi bi-list fs-4 text-dark-blue"></i>
+                </button>
+                <h5 class="fw-bold mb-0 text-dark-blue d-none d-sm-block" id="pageTitle">تتبع مباشر للسائقين</h5>
+                <h6 class="fw-bold mb-0 text-dark-blue d-sm-none" id="pageTitleMobile">تتبع مباشر</h6>
+                <span class="badge bg-danger rounded-pill px-3" id="liveBadge">
+                    <i class="bi bi-broadcast"></i> مباشر
+                </span>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-muted fw-semibold d-none d-sm-inline" id="currentTime"></span>
+                <span class="fw-bold text-dark-blue d-none d-md-inline" id="adminName"></span>
+                <span class="badge bg-dark-blue text-white d-none d-md-inline" id="adminRoleLabel"></span>
+                <button class="btn btn-outline-secondary btn-sm" id="darkModeBtn" title="الوضع الليلي">
+                    <i class="bi bi-moon-stars"></i><span class="d-none d-sm-inline ms-1">ليلي</span>
+                </button>
+                <button class="btn btn-outline-danger btn-sm" id="logoutBtn">
+                    <i class="bi bi-box-arrow-left me-1"></i><span class="d-none d-sm-inline">خروج</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAP PAGE -->
+        <div class="page-content" id="page-map">
+            <!-- STATS BAR -->
+            <div class="bg-white border-bottom" id="statsBar">
+                <div class="container-fluid">
+                    <div class="d-flex justify-content-between align-items-center stats-toggle-row">
+                        <small class="text-muted fw-bold"><i class="bi bi-speedometer2 me-1"></i> مؤشرات اللوحة</small>
+                        <button class="btn btn-sm btn-outline-secondary border-0 stats-toggle-btn" id="statsToggleBtn" title="طي مؤشرات اللوحة">
+                            <i class="bi bi-chevron-up"></i> <span id="statsToggleLabel">طي المؤشرات</span>
+                        </button>
+                    </div>
+                    <div id="statsBody">
+                    <div class="d-flex justify-content-between align-items-stretch gap-0 gap-md-1 pb-2" style="flex-wrap:wrap;">
+                        <div class="stat-item flex-fill px-1 py-1 text-center">
+                            <small class="stat-label text-muted d-block">سائقون متاحون</small>
+                            <strong class="stat-value text-gold" id="statOnlineDrivers">0</strong>
+                        </div>
+                        <div class="stat-item flex-fill px-1 py-1 text-center">
+                            <small class="stat-label text-muted d-block">رحلات نشطة</small>
+                            <strong class="stat-value text-success" id="statActiveRides">0</strong>
+                        </div>
+                        <div class="stat-item flex-fill px-1 py-1 text-center">
+                            <small class="stat-label text-muted d-block">رحلات اليوم</small>
+                            <strong class="stat-value text-primary" id="statTodayRides">0</strong>
+                        </div>
+                        <div class="stat-item flex-fill px-1 py-1 text-center">
+                            <small class="stat-label text-muted d-block">إجمالي العمولات</small>
+                            <strong class="stat-value text-danger" id="statTotalComm">0 <small>MRU</small></strong>
+                        </div>
+                        <div class="stat-item flex-fill px-1 py-1 text-center">
+                            <small class="stat-label text-muted d-block">إجمالي الرحلات</small>
+                            <strong class="stat-value text-dark-blue" id="statTotalRides">0</strong>
+                        </div>
+                        <div class="stat-item flex-fill px-1 py-1 text-center">
+                            <small class="stat-label text-muted d-block">إجمالي السائقين</small>
+                            <strong class="stat-value" style="color:var(--k-purple);" id="statTotalDrivers">0</strong>
+                        </div>
+                        <div class="stat-item flex-fill px-1 py-1 text-center">
+                            <small class="stat-label text-muted d-block">إجمالي الزبائن</small>
+                            <strong class="stat-value" style="color:#E91E63;" id="statTotalCustomers">0</strong>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="map-wrapper position-relative" id="mapWrapper">
+                <div id="map" class="w-100 h-100"></div>
+                <div class="map-search">
+                    <div class="map-search-bar">
+                        <input type="text" id="mapSearchInput" placeholder="ابحث عن مكان أو عنوان..." autocomplete="off">
+                        <button id="mapSearchBtn" title="بحث"><i class="bi bi-search"></i></button>
+                    </div>
+                    <div id="mapSearchResults"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- REPORTS PAGE -->
+        <div class="page-content d-none" id="page-reports">
+            <div class="container-fluid py-3">
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <label class="fw-bold mb-0">الفترة:</label>
+                            <button class="btn btn-sm btn-outline-primary report-range active" data-days="7">آخر 7 أيام</button>
+                            <button class="btn btn-sm btn-outline-primary report-range" data-days="30">آخر 30 يوم</button>
+                            <button class="btn btn-sm btn-outline-primary report-range" data-days="90">آخر 90 يوم</button>
+                            <button class="btn btn-sm btn-outline-primary report-range" data-days="0">كل الفترة</button>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <label class="fw-bold mb-0">من:</label>
+                            <input type="date" id="reportFrom" class="form-control form-control-sm" style="width:145px">
+                            <label class="fw-bold mb-0">إلى:</label>
+                            <input type="date" id="reportTo" class="form-control form-control-sm" style="width:145px">
+                            <button class="btn btn-sm btn-gold text-white fw-bold" id="reportRefreshBtn"><i class="bi bi-arrow-repeat me-1"></i>توليد التقرير</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3" id="reportSummaryCards"></div>
+
+                <div class="row g-3">
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white fw-bold"><i class="bi bi-bar-chart-fill me-1"></i>الرحلات والإيرادات اليومية</div>
+                            <div class="card-body"><canvas id="reportDailyChart" height="110"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white fw-bold"><i class="bi bi-pie-chart-fill me-1"></i>توزيع حالات الرحلات</div>
+                            <div class="card-body"><canvas id="reportStatusChart" height="110"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-1">
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white fw-bold"><i class="bi bi-trophy-fill me-1"></i>أفضل السائقين</div>
+                            <div class="table-responsive" style="max-height:380px">
+                                <table class="table table-sm table-hover align-middle mb-0">
+                                    <thead><tr><th>#</th><th>السائق</th><th>الهاتف</th><th>الرحلات</th><th>الإيرادات</th><th>التقييم</th></tr></thead>
+                                    <tbody id="reportTopDrivers"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white fw-bold"><i class="bi bi-table me-1"></i>ملخص يومي</div>
+                            <div class="table-responsive" style="max-height:380px">
+                                <table class="table table-sm table-hover align-middle mb-0">
+                                    <thead><tr><th>التاريخ</th><th>الرحلات</th><th>إيراد الرحلات</th><th>العمولات</th><th>التوصيل</th><th>الشحن المقبول</th></tr></thead>
+                                    <tbody id="reportDailyTable"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DRIVERS PAGE -->
+        <div class="page-content d-none" id="page-drivers">
+            <div class="container-fluid p-3 p-md-4">
+                <div class="row g-3">
+                    <!-- Register New Driver -->
+                    <div class="col-12" data-perm="drivers_add">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom cursor-pointer" data-bs-toggle="collapse" data-bs-target="#registerForm">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-person-plus-fill me-2 text-gold"></i>تسجيل سائق جديد</h6>
+                            </div>
+                            <div class="collapse show" id="registerForm">
+                                <div class="card-body">
+                                    <div class="row g-3" autocomplete="off">
+                                        <div class="col-md-3 col-6">
+                                            <label class="form-label fw-bold">الاسم</label>
+                                            <input type="text" class="form-control" id="newDriverName" placeholder="اسم السائق" autocomplete="off">
+                                        </div>
+                                        <div class="col-md-3 col-6">
+                                            <label class="form-label fw-bold">الهاتف</label>
+                                            <input type="tel" class="form-control" id="newDriverPhone" placeholder="رقم الهاتف" autocomplete="off">
+                                        </div>
+                                        <div class="col-md-3 col-6">
+                                            <label class="form-label fw-bold">كلمة السر</label>
+                                            <input type="password" class="form-control" id="newDriverPassword" placeholder="كلمة السر" autocomplete="new-password">
+                                        </div>
+                                        <div class="col-md-3 col-6">
+                                            <label class="form-label fw-bold">نوع المركبة</label>
+                                            <select class="form-select" id="newDriverVehicle">
+                                                <option value="car">سيارة</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3 col-6">
+                                            <label class="form-label fw-bold">الرصيد (MRU)</label>
+                                            <input type="text" class="form-control" id="newDriverCredit" value="" inputmode="numeric" placeholder="0" autocomplete="off">
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-dark-blue text-white fw-bold mt-3" id="registerDriverBtn">
+                                        <i class="bi bi-check-circle me-1"></i>تسجيل السائق
+                                    </button>
+                                    <div class="mt-2 fw-semibold" id="registerDriverStatus"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Remote Service Control -->
+                    <div class="col-12" data-perm="drivers_service">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-power me-2 text-gold"></i>التحكم بالخدمة عن بُعد</h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small mb-3">شغّل الخدمة عن بُعد للسائقين الذين نسوا الضغط على زر «تشغيل الخدمة» في هواتفهم. هذا يجعلهم متاحين لاستقبال الرحلات في النظام مباشرة.</p>
+                                <div class="d-flex gap-2 flex-wrap align-items-center">
+                                    <button class="btn btn-success fw-bold" onclick="setServiceForAll(true)">
+                                        <i class="bi bi-play-circle-fill me-1"></i>تشغيل الخدمة للجميع
+                                    </button>
+                                    <button class="btn btn-danger fw-bold" onclick="setServiceForAll(false)">
+                                        <i class="bi bi-stop-circle-fill me-1"></i>إيقاف الخدمة للجميع
+                                    </button>
+                                    <div class="form-check ms-3">
+                                        <input class="form-check-input" type="checkbox" id="serviceNotifyDrivers" checked>
+                                        <label class="form-check-label fw-semibold" for="serviceNotifyDrivers">إرسال إشعار (صوت) للسائقين المتأثرين</label>
+                                    </div>
+                                </div>
+                                <div class="mt-2 fw-semibold" id="serviceStatus"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Drivers List -->
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-people-fill me-2 text-gold"></i>قائمة السائقين (<span id="totalDriversCount">0</span>)</h6>
+                                <button class="btn btn-sm btn-outline-dark-blue" onclick="exportDriversCSV()"><i class="bi bi-download me-1"></i>تصدير CSV</button>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-8 col-7">
+                                        <input type="text" class="form-control" id="searchDrivers" placeholder="بحث بالاسم أو الهاتف...">
+                                    </div>
+                                    <div class="col-md-4 col-5">
+                                        <select class="form-select" id="filterDriverStatus">
+                                            <option value="all">الكل</option>
+                                            <option value="online">متاح</option>
+                                            <option value="offline">غير متاح</option>
+                                            <option value="disabled">معطّل</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle">
+                                        <thead class="table-dark-blue text-white">
+                                            <tr>
+                                                <th>الاسم</th>
+                                                <th>الهاتف</th>
+                                                <th>كلمة السور</th>
+                                                <th>الرصيد</th>
+                                                <th>الحالة</th>
+                                                <th>إجراءات</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="driversTableBody">
+                                            <tr><td colspan="6" class="text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري تحميل السائقين...</div></td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CUSTOMERS PAGE -->
+        <div class="page-content d-none" id="page-customers">
+            <div class="container-fluid p-3 p-md-4">
+                <div class="row g-3">
+                    <!-- Recharge Requests -->
+                    <div class="col-12" data-perm="recharge_approve">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-cash-coin me-2 text-gold"></i>طلبات شحن الرصيد (<span id="rechargeRequestsCount">0</span>)</h6>
+                                <button class="btn btn-sm btn-outline-dark-blue" onclick="loadRechargeRequests()"><i class="bi bi-arrow-clockwise me-1"></i>تحديث</button>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle">
+                                        <thead class="table-dark-blue text-white">
+                                            <tr>
+                                                <th>الطالب</th>
+                                                <th>الهاتف</th>
+                                                <th>المبلغ والمحفظة</th>
+                                                <th>لقطة الشاشة</th>
+                                                <th>التاريخ</th>
+                                                <th>الحالة</th>
+                                                <th>إجراءات</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="rechargeRequestsTableBody">
+                                            <tr><td colspan="7" class="text-center py-3 text-muted small">جاري تحميل الطلبات...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Register New Customer -->
+                    <div class="col-12" data-perm="customers_add">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom cursor-pointer" data-bs-toggle="collapse" data-bs-target="#registerCustomerForm">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-person-plus-fill me-2 text-gold"></i>تسجيل زبون جديد</h6>
+                            </div>
+                            <div class="collapse show" id="registerCustomerForm">
+                                <div class="card-body">
+                                    <div class="row g-3" autocomplete="off">
+                                        <div class="col-md-3 col-6">
+                                            <label class="form-label fw-bold">الاسم</label>
+                                            <input type="text" class="form-control" id="newCustomerName" placeholder="اسم الزبون" autocomplete="off">
+                                        </div>
+                                        <div class="col-md-3 col-6">
+                                            <label class="form-label fw-bold">الهاتف</label>
+                                            <input type="tel" class="form-control" id="newCustomerPhone" placeholder="رقم الهاتف" autocomplete="off">
+                                        </div>
+                                        <div class="col-md-3 col-6">
+                                            <label class="form-label fw-bold">الواتساب</label>
+                                            <input type="tel" class="form-control" id="newCustomerWhatsapp" placeholder="رقم الواتساب (اختياري)" autocomplete="off">
+                                        </div>
+                                        <div class="col-md-3 col-6">
+                                            <label class="form-label fw-bold">كلمة السر</label>
+                                            <input type="password" class="form-control" id="newCustomerPassword" placeholder="كلمة السر" autocomplete="new-password">
+                                        </div>
+                                        <div class="col-md-3 col-6">
+                                            <label class="form-label fw-bold">الرصيد (MRU)</label>
+                                            <input type="text" class="form-control" id="newCustomerCredit" value="" inputmode="numeric" placeholder="0" autocomplete="off">
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-dark-blue text-white fw-bold mt-3" id="registerCustomerBtn">
+                                        <i class="bi bi-check-circle me-1"></i>تسجيل الزبون
+                                    </button>
+                                    <div class="mt-2 fw-semibold" id="registerCustomerStatus"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Customer Profile Search -->
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-person-lines-fill me-2 text-gold"></i>بحث عن زبون وعرض كامل معلوماته</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="input-group mb-3">
+                                    <input type="tel" class="form-control" id="searchCustomerProfilePhone" placeholder="رقم الهاتف">
+                                    <input type="text" class="form-control" id="searchCustomerProfileName" placeholder="أو الاسم">
+                                    <button class="btn btn-dark-blue text-white fw-bold" onclick="searchCustomerProfile()">بحث</button>
+                                </div>
+                                <div id="customerProfileResult"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Customers List -->
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-person-badge-fill me-2 text-gold"></i>قائمة الزبائن (<span id="totalCustomersCount">0</span>)</h6>
+                                <button class="btn btn-sm btn-outline-dark-blue" onclick="exportCustomersCSV()"><i class="bi bi-download me-1"></i>تصدير CSV</button>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-8 col-7">
+                                        <input type="text" class="form-control" id="searchCustomers" placeholder="بحث بالاسم أو الهاتف...">
+                                    </div>
+                                    <div class="col-md-4 col-5">
+                                        <select class="form-select" id="filterCustomerStatus">
+                                            <option value="all">الكل</option>
+                                            <option value="online">متصل</option>
+                                            <option value="offline">غير متصل</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle">
+                                        <thead class="table-dark-blue text-white">
+                                            <tr>
+                                                <th>الاسم</th>
+                                                <th>الهاتف</th>
+                                                <th>الواتساب</th>
+                                                <th>كلمة السر</th>
+                                                <th>الرصيد</th>
+                                                <th>الحالة</th>
+                                                <th>الرحلات</th>
+                                                <th>إجراءات</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="customersTableBody">
+                                            <tr><td colspan="8" class="text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري تحميل الزبائن...</div></td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DEVICES PAGE -->
+        <div class="page-content d-none" id="page-devices">
+            <div class="container-fluid p-3 p-md-4">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-phone-fill me-2 text-gold"></i>الأجهزة المستخدمة للتطبيق</h6>
+                                <button class="btn btn-sm btn-outline-dark-blue" onclick="loadDevices()"><i class="bi bi-arrow-clockwise me-1"></i>تحديث</button>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-3 col-6">
+                                        <div class="card border-0 shadow-sm text-center p-3 h-100">
+                                            <div class="text-dark-blue fw-bold fs-2" id="devTotalCount">–</div>
+                                            <div class="text-muted small">إجمالي الأجهزة</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <div class="card border-0 shadow-sm text-center p-3 h-100">
+                                            <div class="text-success fw-bold fs-2" id="devDriverCount">–</div>
+                                            <div class="text-muted small">أجهزة السائقين</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <div class="card border-0 shadow-sm text-center p-3 h-100">
+                                            <div class="text-primary fw-bold fs-2" id="devCustomerCount">–</div>
+                                            <div class="text-muted small">أجهزة الزبائن</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <div class="card border-0 shadow-sm text-center p-3 h-100">
+                                            <div class="text-warning fw-bold fs-2" id="devUnknownCount">–</div>
+                                            <div class="text-muted small">حسابات بلا معرّف جهاز</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <h6 class="fw-bold text-dark-blue mb-2"><i class="bi bi-bar-chart-fill me-1 text-gold"></i>توزيع ماركات الأجهزة</h6>
+                                    <div id="devBrandChart" class="d-flex flex-wrap gap-2">–</div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle">
+                                        <thead class="table-dark-blue text-white">
+                                            <tr>
+                                                <th>#</th>
+                                                <th>معرّف الجهاز</th>
+                                                <th>الدور</th>
+                                                <th>الحساب</th>
+                                                <th>الهاتف</th>
+                                                <th>الماركة</th>
+                                                <th>النموذج</th>
+                                                <th>الحالة</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="devicesTableBody">
+                                            <tr><td colspan="8" class="text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري تحميل الأجهزة...</div></td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <small class="text-muted">الماركة والنموذج يظهران تلقائياً بعد تسجيل السائق/الزبون دخوله من التطبيق المحدّث. المعرّف هو ANDROID_ID (لكل تثبيت تطبيق على جهاز).</small>
+                                <div class="mt-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                                        <h6 class="fw-bold text-dark-blue mb-0"><i class="bi bi-person-exclamation me-1 text-gold"></i>حسابات بلا معرّف جهاز (<span id="devUnknownListCount">0</span>)</h6>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteAllUnknownAccounts()"><i class="bi bi-trash me-1"></i>حذف الكل</button>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle">
+                                            <thead class="table-dark-blue text-white">
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>الدور</th>
+                                                    <th>الاسم</th>
+                                                    <th>الهاتف</th>
+                                                    <th>الرصيد</th>
+                                                    <th>تاريخ التسجيل</th>
+                                                    <th>إجراءات</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="devUnknownTableBody">
+                                                <tr><td colspan="7" class="text-center text-muted py-3">لا توجد حسابات بلا معرّف جهاز</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <small class="text-muted">هذه الحسابات لم تسجّل الدخول بعد من تطبيق محدّث، لذا لا تملك معرّف جهاز. الحذف نهائي ولا يمكن التراجع عنه.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- UNREGISTERED CUSTOMERS PAGE -->
+        <div class="page-content d-none" id="page-unregistered-customers">
+            <div class="container-fluid p-3 p-md-4">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-person-x-fill me-2 text-gold"></i>الزبناء غير المسجلين (<span id="totalUnregCustomersCount">0</span>)</h6>
+                                <button class="btn btn-sm btn-outline-dark-blue" onclick="exportUnregisteredCustomersCSV()"><i class="bi bi-download me-1"></i>تصدير CSV</button>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-8 col-7">
+                                        <input type="text" class="form-control" id="searchUnregCustomers" placeholder="بحث بالاسم أو الهاتف...">
+                                    </div>
+                                    <div class="col-md-4 col-5 d-flex align-items-center">
+                                        <small class="text-muted">زبائن ظهروا في سجلات الرحلات دون حساب مسجل</small>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle">
+                                        <thead class="table-dark-blue text-white">
+                                            <tr>
+                                                <th>الاسم</th>
+                                                <th>الهاتف</th>
+                                                <th>عدد الرحلات</th>
+                                                <th>إجمالي المبالغ</th>
+                                                <th>آخر رحلة</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="unregCustomersTableBody">
+                                            <tr><td colspan="5" class="text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري تحميل البيانات...</div></td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIDES PAGE -->
+        <div class="page-content d-none" id="page-rides">
+            <div class="container-fluid p-3 p-md-4">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                        <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-journal-text me-2 text-gold"></i>سجل الرحلات</h6>
+                        <div class="d-flex gap-2 align-items-center">
+                            <select class="form-select form-select-sm w-auto" id="filterRideStatus">
+                                <option value="all">جميع الحالات</option>
+                                <option value="pending">قيد الانتظار</option>
+                                <option value="accepted">مقبولة</option>
+                                <option value="in_progress">جارية</option>
+                                <option value="completed">مكتملة</option>
+                                <option value="cancelled">ملغاة</option>
+                            </select>
+                            <button class="btn btn-sm btn-outline-dark-blue" onclick="exportRidesCSV()"><i class="bi bi-download me-1"></i>تصدير CSV</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-dark-blue text-white">
+                                    <tr>
+                                        <th>الزبون</th>
+                                        <th class="d-none d-md-table-cell">هاتف الزبون</th>
+                                        <th class="d-none d-md-table-cell">الانطلاق</th>
+                                        <th class="d-none d-md-table-cell">الوجهة</th>
+                                        <th class="d-none d-lg-table-cell">ملاحظات الزبون</th>
+                                        <th>المسافة</th>
+                                        <th>السعر</th>
+                                        <th>العمولة</th>
+                                        <th>اسم السائق</th>
+                                        <th class="d-none d-lg-table-cell">هاتف السائق</th>
+                                        <th>الحالة</th>
+                                        <th class="d-none d-lg-table-cell">التاريخ</th>
+                                        <th>إجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ridesTableBody">
+                                    <tr><td colspan="13" class="text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري تحميل الرحلات...</div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SETTINGS PAGE -->
+        <div class="page-content d-none" id="page-settings">
+            <div class="container-fluid p-3 p-md-4">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-header bg-white border-bottom">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-percent text-gold me-2"></i>النسبة المقتطعة (العمولة)</h6>
+                            </div>
+                            <div class="card-body text-center">
+                                <div class="display-4 fw-bold text-gold my-3" id="currentCommission">10%</div>
+                                <p class="text-muted small">النسبة المقتطعة من كل رحلة تلقائياً</p>
+                                <div class="input-group">
+                                    <input type="number" class="form-control text-center fw-bold" id="newCommission" min="0" max="100" placeholder="النسبة %">
+                                    <button class="btn btn-dark-blue text-white fw-bold" onclick="saveCommission()">حفظ</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-header bg-white border-bottom">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-percent text-gold me-2"></i>عمولة طلبات الزبون</h6>
+                            </div>
+                            <div class="card-body text-center">
+                                <div class="display-4 fw-bold text-gold my-3" id="currentCustomerCommission">5%</div>
+                                <p class="text-muted small">النسبة المخصومة من رصيد الزبون عند قبوله سعر التوصيل</p>
+                                <div class="input-group">
+                                    <input type="number" class="form-control text-center fw-bold" id="newCustomerCommission" min="0" max="100" placeholder="النسبة %">
+                                    <button class="btn btn-dark-blue text-white fw-bold" onclick="saveCustomerCommission()">حفظ</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-header bg-white border-bottom">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-search text-gold me-2"></i>بحث عن سائق</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="input-group mb-3">
+                                    <input type="tel" class="form-control" id="searchDriverPhone" placeholder="رقم الهاتف">
+                                    <button class="btn btn-dark-blue text-white fw-bold" onclick="searchDriverByPhone()">بحث</button>
+                                </div>
+                                <div id="searchDriverResult"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-telephone-fill text-gold me-2"></i>معلومات الاتصال</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="bg-light rounded-3 p-3 text-center">
+                                            <small class="text-muted">هاتف التواصل</small>
+                                            <div class="fs-4 fw-bold text-dark-blue">47717983</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="bg-light rounded-3 p-3 text-center">
+                                            <small class="text-muted">واتساب تزويد الرصيد</small>
+                                            <div class="fs-4 fw-bold text-success">26067036</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-bell-fill text-gold me-2"></i>سجل الإشعارات</h6>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <span class="badge bg-success" id="notifLogCount">0</span>
+                                    <button class="btn btn-sm btn-outline-primary d-none" id="enableDesktopNotifBtn" onclick="requestDesktopNotifications()"><i class="bi bi-bell me-1"></i>تفعيل تنبيه سطح المكتب</button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="clearNotifLog()"><i class="bi bi-trash me-1"></i>مسح</button>
+                                </div>
+                            </div>
+                            <div class="card-body p-0" style="max-height:300px;overflow-y:auto;">
+                                <div id="notifLogContainer">
+                                    <div class="text-center text-muted py-4 small">لا توجد إشعارات بعد</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- DAILY RIDES CLEANUP -->
+                    <div class="col-12 admin-only">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-calendar2-week text-gold me-2"></i>سجل الرحلات اليومي</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="ridesCleanupAuto" checked>
+                                    <label class="form-check-label fw-bold" for="ridesCleanupAuto">المسح التلقائي كل 24 ساعة</label>
+                                </div>
+                                <p class="text-muted small mb-3">عند تفعيله، يُمسح سجل الرحلات تلقائيًا كل 24 ساعة لتبدأ كل يوم بسجل جديد. آخر مسح: <span id="ridesCleanupLastRun" class="fw-bold text-dark-blue">-</span></p>
+                                <button class="btn btn-outline-danger fw-bold" onclick="clearRidesNow()">
+                                    <i class="bi bi-trash me-1"></i>مسح سجل الرحلات الآن
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 admin-only">
+                        <div class="card shadow-sm border-0 border-danger">
+                            <div class="card-header bg-white border-bottom border-danger">
+                                <h6 class="fw-bold mb-0 text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>مسح جميع البيانات</h6>
+                            </div>
+                            <div class="card-body text-center">
+                                <p class="text-muted mb-3">سيتم حذف جميع البيانات (الرحلات، السائقين، الزبائن، الرسائل، الإعلانات، المنتجات، المتاجر، طلبات الشحن، الإشعارات). حساب المالك وجميع المشرفين يبقون كما هم، ولا يمكن مسح حساب المالك. لا يمكن التراجع عن هذا الإجراء.</p>
+                                <button class="btn btn-danger fw-bold px-5" onclick="confirmResetAllData()">
+                                    <i class="bi bi-trash3-fill me-2"></i>مسح الكل وبدء من الصفر
+                                </button>
+                                <div class="mt-2 fw-semibold" id="resetStatus"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    <!-- MESSAGES PAGE -->
+        <div class="page-content d-none" id="page-messages">
+            <div class="container-fluid p-3 p-md-4">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-pencil-square me-2 text-gold"></i>إرسال رسالة جديدة</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-3 col-6">
+                                        <label class="form-label fw-bold">نوع الرسالة</label>
+                                        <select class="form-select" id="msgType">
+                                            <option value="text">نص</option>
+                                            <option value="image">صورة</option>
+                                            <option value="audio">صوت</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-9 col-6">
+                                        <label class="form-label fw-bold">المستلمون</label>
+                                        <select class="form-select mb-2" id="msgRecipientType">
+                                            <option value="drivers">سائقون</option>
+                                            <option value="customers">زبائن</option>
+                                        </select>
+                                        <select class="form-select" id="msgRecipients" multiple size="3" style="min-height:80px;"></select>
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox" id="msgSelectAll" onchange="handleMsgSelectAll(this)">
+                                            <label class="form-check-label fw-semibold" for="msgSelectAll"><i class="bi bi-people-fill me-1 text-dark-blue"></i>تحديد الجميع دفعة واحدة</label>
+                                            <div class="mt-1"><small class="text-muted" id="msgSelectAllCount">المحدد: 0</small></div>
+                                        </div>
+                                        <small class="text-muted">اضغط Ctrl لاختيار أكثر من مستلم</small>
+                                    </div>
+                                </div>
+                                <div id="msgTextGroup" class="mt-3">
+                                    <label class="form-label fw-bold">نص الرسالة</label>
+                                    <textarea class="form-control" id="msgText" rows="3" placeholder="اكتب رسالتك هنا..."></textarea>
+                                </div>
+                                <div id="msgImageGroup" class="mt-3 d-none">
+                                    <label class="form-label fw-bold">اختر صورة</label>
+                                    <input type="file" class="form-control" id="msgImageFile" accept="image/*">
+                                    <div id="msgImagePreview" class="mt-2"></div>
+                                </div>
+                                <div id="msgAudioGroup" class="mt-3 d-none">
+                                    <label class="form-label fw-bold">اختر ملف صوتي</label>
+                                    <input type="file" class="form-control" id="msgAudioFile" accept="audio/*">
+                                    <div id="msgAudioPreview" class="mt-2"></div>
+                                </div>
+                                <div class="mt-3">
+                                    <button class="btn btn-gold text-white fw-bold" id="sendMsgBtn">
+                                        <i class="bi bi-send-fill me-1"></i>إرسال
+                                    </button>
+                                </div>
+                                <div class="mt-2 fw-semibold" id="msgSendStatus"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-envelope-fill me-2 text-gold"></i>الرسائل المرسلة (<span id="msgCount">0</span>)</h6>
+                                <button class="btn btn-sm btn-outline-danger" onclick="clearOldMessages()"><i class="bi bi-trash me-1"></i>مسح الكل</button>
+                            </div>
+                            <div class="card-body p-0" style="max-height:500px;overflow-y:auto;">
+                                <div id="msgListContainer">
+                                    <div class="text-center text-muted py-4 small">لا توجد رسائل بعد</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-chat-heart-fill me-2 text-gold"></i>رسائل الزبائن (<span id="msgCountCustomers">0</span>)</h6>
+                            </div>
+                            <div class="card-body p-0" style="max-height:500px;overflow-y:auto;">
+                                <div id="msgListContainerCustomers">
+                                    <div class="text-center text-muted py-4 small">لا توجد رسائل للزبائن بعد</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+<!-- DELIVERIES PAGE -->
+        <div class="page-content d-none" id="page-deliveries">
+            <div class="container-fluid p-3 p-md-4">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-truck me-2 text-gold"></i>طلبات التوصيل من تطبيق الزبائن</h6>
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <input type="text" id="searchDeliveries" class="form-control form-control-sm" style="width:180px;" placeholder="بحث بالهاتف أو الاسم..." oninput="loadDeliveriesList()">
+                                    <select class="form-select form-select-sm" id="filterDeliveryStatus" onchange="loadDeliveriesList()">
+                                        <option value="all">كل الحالات</option>
+                                        <option value="new">جديد</option>
+                                        <option value="price_sent">سعر مُرسل</option>
+                                        <option value="accepted">مقبول</option>
+                                        <option value="saved">رُفض السعر</option>
+                                        <option value="launched">مُطلق</option>
+                                        <option value="in_progress">قيد التنفيذ</option>
+                                        <option value="no_drivers">بلا سائقين</option>
+                                        <option value="completed">مكتملة</option>
+                                        <option value="cancelled">ملغاة</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>الزبون</th>
+                                                <th>مستلم</th>
+                                                <th class="d-none d-md-table-cell">نقطة الانطلاق</th>
+                                                <th class="d-none d-md-table-cell">نقطة الوجهة</th>
+                                                <th class="d-none d-lg-table-cell">ملاحظات الزبون</th>
+                                                <th>السعر</th>
+                                                <th>الحالة</th>
+                                                <th class="d-none d-lg-table-cell">التاريخ</th>
+                                                <th>إجراءات</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="deliveriesTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+<!-- ANNOUNCEMENTS PAGE -->
+        <div class="page-content d-none" id="page-announcements">
+            <div class="container-fluid p-3 p-md-4">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-bullhorn-fill me-2 text-gold"></i>إرسال إعلان لجميع السائقين</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-bold">عنوان الإعلان</label>
+                                        <input type="text" class="form-control" id="annTitle" placeholder="مثال: عروض نهاية الأسبوع" maxlength="80">
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="form-label fw-bold">نص الإعلان</label>
+                                        <textarea class="form-control" id="annContent" rows="3" placeholder="اكتب نص الإعلان الذي سيصل لجميع السائقين..."></textarea>
+                                    </div>
+                                </div>
+                                <div class="mt-3 d-flex align-items-center gap-3">
+                                    <button class="btn btn-gold text-white fw-bold" onclick="sendAnnouncement()">
+                                        <i class="bi bi-broadcast me-1"></i>إرسال للجميع
+                                    </button>
+                                    <span class="text-muted small"><i class="bi bi-people-fill me-1"></i>سيصل الإعلان لجميع السائقين الحاليين والمستقبليين</span>
+                                </div>
+                                <div class="mt-2 fw-semibold" id="annSendStatus"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-envelope-paper-fill me-2 text-gold"></i>الإعلانات المرسلة (<span id="annCount">0</span>)</h6>
+                                <button class="btn btn-sm btn-outline-danger" onclick="clearOldAnnouncements()"><i class="bi bi-trash me-1"></i>مسح الكل</button>
+                            </div>
+                            <div class="card-body p-0" style="max-height:500px;overflow-y:auto;">
+                                <div id="annListContainer">
+                                    <div class="text-center text-muted py-4 small">لا توجد إعلانات بعد</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+<!-- CUSTOMER ANNOUNCEMENTS PAGE -->
+        <div class="page-content d-none" id="page-customer-announcements">
+            <div class="container-fluid p-3 p-md-4">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-bullhorn-fill me-2 text-gold"></i>إرسال إعلان لجميع الزبائن</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-bold">عنوان الإعلان</label>
+                                        <input type="text" class="form-control" id="custAnnTitle" placeholder="مثال: عروض نهاية الأسبوع" maxlength="80">
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="form-label fw-bold">نص الإعلان</label>
+                                        <textarea class="form-control" id="custAnnContent" rows="3" placeholder="اكتب نص الإعلان الذي سيصل لجميع الزبائن..."></textarea>
+                                    </div>
+                                </div>
+                                <div class="mt-3 d-flex align-items-center gap-3">
+                                    <button class="btn btn-gold text-white fw-bold" onclick="sendCustomerAnnouncement()">
+                                        <i class="bi bi-broadcast me-1"></i>إرسال للجميع
+                                    </button>
+                                    <span class="text-muted small"><i class="bi bi-people-fill me-1"></i>سيصل الإعلان لجميع الزبائن الحاليين والمستقبليين</span>
+                                </div>
+                                <div class="mt-2 fw-semibold" id="custAnnSendStatus"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-envelope-paper-fill me-2 text-gold"></i>إعلانات الزبائن المرسلة (<span id="custAnnCount">0</span>)</h6>
+                                <button class="btn btn-sm btn-outline-danger" onclick="clearOldCustomerAnnouncements()"><i class="bi bi-trash me-1"></i>مسح الكل</button>
+                            </div>
+                            <div class="card-body p-0" style="max-height:500px;overflow-y:auto;">
+                                <div id="custAnnListContainer">
+                                    <div class="text-center text-muted py-4 small">لا توجد إعلانات بعد</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+<!-- ADMINS PAGE -->
+        <div class="page-content d-none" id="page-admins">
+            <div class="container-fluid p-3 p-md-4">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-person-plus-fill me-2 text-gold"></i>إضافة مشرف جديد</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-3 col-6">
+                                        <label class="form-label fw-bold">اسم المستخدم</label>
+                                        <input type="text" class="form-control" id="newAdminUsername" placeholder="اسم المستخدم">
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <label class="form-label fw-bold">الاسم الكامل</label>
+                                        <input type="text" class="form-control" id="newAdminName" placeholder="الاسم الكامل">
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <label class="form-label fw-bold">كلمة المرور</label>
+                                        <input type="password" class="form-control" id="newAdminPassword" placeholder="كلمة المرور">
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <label class="form-label fw-bold">الدور</label>
+                                        <select class="form-select" id="newAdminRole">
+                                            <option value="supervisor">مشرف</option>
+                                            <option value="admin">مدير عام</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div id="newAdminPermsWrap" style="display:none;">
+                                    <label class="form-label fw-bold mt-3">مهام المشرف (اختر ما يُسمح له به)</label>
+                                    <div class="row g-2" id="newAdminPerms"></div>
+                                    <small class="text-muted">اتركها فارغة = وصول كامل لجميع المهام.</small>
+                                </div>
+                                <button class="btn btn-dark-blue text-white fw-bold mt-3" onclick="addAdmin()">
+                                    <i class="bi bi-check-circle me-1"></i>إضافة المشرف
+                                </button>
+                                <div class="mt-2 fw-semibold" id="addAdminStatus"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-shield-lock-fill me-2 text-gold"></i>قائمة المشرفين (<span id="totalAdminsCount">0</span>)</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle">
+                                        <thead class="table-dark-blue text-white">
+                                            <tr>
+                                                <th>الاسم</th>
+                                                <th>اسم المستخدم</th>
+                                                <th>الدور</th>
+                                                <th>إجراءات</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="adminsTableBody">
+                                            <tr><td colspan="4" class="text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري تحميل المشرفين...</div></td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PROMOTIONS PAGE -->
+        <div class="page-content d-none" id="page-promotions">
+            <div class="container-fluid p-3 p-md-4">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-plus-circle me-2 text-gold"></i>إضافة عرض أو نشاط جديد</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">العنوان</label>
+                                        <input type="text" class="form-control" id="promoTitle" placeholder="عنوان العرض">
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <label class="form-label fw-bold">النوع</label>
+                                        <select class="form-select" id="promoType">
+                                            <option value="promotion">عرض</option>
+                                            <option value="activity">نشاط</option>
+                                            <option value="offer">تخفيض</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <label class="form-label fw-bold">رابط فيديو (YouTube أو TikTok)</label>
+                                        <input type="url" class="form-control" id="promoVideo" placeholder="https://youtube.com/... أو https://tiktok.com/...">
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label fw-bold">الوصف</label>
+                                        <textarea class="form-control" id="promoDescription" rows="3" placeholder="نص العرض..."></textarea>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="form-label fw-bold">صور (اختيار متعدد)</label>
+                                        <input type="file" class="form-control" id="promoImages" accept="image/*" multiple>
+                                    </div>
+                                    <div class="col-md-8 mt-2">
+                                        <label class="form-label fw-bold small">أو أدخل روابط صور مباشرة (واحد لكل سطر)</label>
+                                        <textarea class="form-control" id="promoImageUrls" rows="2" placeholder="https://example.com/image1.jpg"></textarea>
+                                    </div>
+                                    <div id="promoImagesPreview" class="col-12 d-flex gap-2 flex-wrap"></div>
+                                </div>
+                                <button class="btn btn-dark-blue text-white fw-bold mt-3" id="btnAddPromotion" onclick="addPromotion()">
+                                    <i class="bi bi-check-circle me-1"></i>إضافة العرض
+                                </button>
+                                <div class="mt-2 fw-semibold" id="addPromoStatus"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-list me-2 text-gold"></i>قائمة العروض والنشاطات (<span id="promoCount">0</span>)</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="promotionsList" class="row g-3">
+                                    <div class="col-12 text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري التحميل...</div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PRODUCTS PAGE -->
+        <div class="page-content d-none" id="page-products">
+            <div class="container-fluid p-3 p-md-4">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-plus-circle me-2 text-gold"></i>إضافة منتج جديد</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-bold">اسم المنتج</label>
+                                        <input type="text" class="form-control" id="prodName" placeholder="اسم المنتج">
+                                    </div>
+                                    <div class="col-md-2 col-4">
+                                        <label class="form-label fw-bold">النوع</label>
+                                        <select class="form-select" id="prodType">
+                                            <option value="car">سيارة</option>
+                                            <option value="other">أخرى</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2 col-4">
+                                        <label class="form-label fw-bold">السعر (MRU)</label>
+                                        <input type="number" class="form-control" id="prodPrice" placeholder="0" min="0">
+                                    </div>
+                                    <div class="col-md-4 col-4">
+                                        <label class="form-label fw-bold">الهاتف</label>
+                                        <input type="tel" class="form-control" id="prodPhone" placeholder="رقم البائع">
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label fw-bold">الوصف</label>
+                                        <textarea class="form-control" id="prodDescription" rows="3" placeholder="وصف المنتج..."></textarea>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">صور (اختيار متعدد)</label>
+                                        <input type="file" class="form-control" id="prodImages" accept="image/*" multiple>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">رابط فيديو (YouTube أو TikTok)</label>
+                                        <input type="url" class="form-control" id="prodVideo" placeholder="https://youtube.com/... أو https://tiktok.com/...">
+                                    </div>
+                                    <div class="col-12 mt-2">
+                                        <label class="form-label fw-bold small">أو أدخل روابط صور مباشرة (واحد لكل سطر)</label>
+                                        <textarea class="form-control" id="prodImageUrls" rows="2" placeholder="https://example.com/image1.jpg"></textarea>
+                                    </div>
+                                    <div id="prodImagesPreview" class="col-12 d-flex gap-2 flex-wrap"></div>
+                                </div>
+                                <button class="btn btn-dark-blue text-white fw-bold mt-3" id="btnAddProduct" onclick="addProduct()">
+                                    <i class="bi bi-check-circle me-1"></i>إضافة المنتج
+                                </button>
+                                <div class="mt-2 fw-semibold" id="addProductStatus"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-list me-2 text-gold"></i>قائمة المنتجات (<span id="productCount">0</span>)</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="productsList" class="row g-3">
+                                    <div class="col-12 text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري التحميل...</div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-people me-2 text-gold"></i>منتجات الزبائن (المرفوعة من التطبيق) (<span id="customerProductCount">0</span>)</h6>
+                                <select class="form-select form-select-sm" id="customerProductFilter" style="width:auto" onchange="loadCustomerProductsList()">
+                                    <option value="all">الكل</option>
+                                    <option value="pending">بانتظار الموافقة</option>
+                                    <option value="approved">ظاهرة</option>
+                                    <option value="hidden">مخفية</option>
+                                    <option value="rejected">مرفوضة</option>
+                                </select>
+                            </div>
+                            <div class="card-body">
+                                <div id="customerProductsList" class="row g-3">
+                                    <div class="col-12 text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري التحميل...</div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    <!-- STORES (SMART PROMOTIONS) PAGE -->
+    <div class="page-content d-none" id="page-stores">
+        <div class="container-fluid p-3 p-md-4">
+            <div class="row g-3">
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-white border-bottom">
+                            <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-plus-circle me-2 text-gold"></i>إضافة متجر / نشاط ذكي</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">اسم المتجر</label>
+                                    <input type="text" class="form-control" id="storeName" placeholder="اسم المتجر">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">رقم الهاتف</label>
+                                    <input type="text" class="form-control" id="storePhone" placeholder="رقم الهاتف">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">الحي / الموقع</label>
+                                    <input type="text" class="form-control" id="storeDistrict" placeholder="الحي / الموقع">
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label fw-bold">صورة المتجر</label>
+                                    <input type="file" class="form-control" id="storeImage" accept="image/*">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">رابط صورة (اختياري)</label>
+                                    <input type="text" class="form-control" id="storeImageUrl" placeholder="https://...">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">الحالة</label>
+                                    <div class="form-check form-switch mt-2">
+                                        <input class="form-check-input" type="checkbox" id="storeActive" checked>
+                                        <label class="form-check-label" for="storeActive">ظاهر في التطبيق</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-8">
+                                    <div id="storeImagePreview" class="d-none">
+                                        <img src="" alt="معاينة" class="img-thumbnail rounded-3" style="max-height:120px;">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">الموقع على الخريطة</label>
+                                    <div class="d-flex align-items-center gap-2 mt-2">
+                                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="openStoreMapPicker()"><i class="bi bi-geo-alt me-1"></i>تحديد الموقع</button>
+                                        <button type="button" class="btn btn-outline-danger btn-sm d-none" id="btnClearStoreLocation" onclick="clearStoreLocation()" title="إزالة الموقع"><i class="bi bi-x-lg"></i></button>
+                                    </div>
+                                    <div class="small text-muted mt-2" id="storeLocationText"><i class="bi bi-info-circle me-1"></i>لم يُحدد الموقع بعد — يستطيع السائق توجيه نفسه إلى المتجر</div>
+                                </div>
+                                <div class="col-12">
+                                    <button class="btn btn-primary px-4" id="btnAddStore" onclick="addStore()"><i class="bi bi-plus-lg me-2"></i>إضافة المتجر</button>
+                                    <div class="mt-2 fw-semibold" id="addStoreStatus"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                            <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-store me-2 text-gold"></i>المتاجر والنشاطات الذكية (<span id="storeCount">0</span>)</h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="storesList" class="row g-3">
+                                <div class="col-12 text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري التحميل...</div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LADIES STORE PAGE -->
+    <div class="page-content d-none" id="page-ladies">
+        <div class="container-fluid p-3 p-md-4">
+            <div class="row g-3">
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-white border-bottom">
+                            <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-plus-circle me-2 text-gold"></i>إضافة منتج إلى متجر عرفه للسيدات</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">اسم المنتج</label>
+                                    <input type="text" class="form-control" id="ladiesName" placeholder="اسم المنتج">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">السعر (MRU)</label>
+                                    <input type="number" class="form-control" id="ladiesPrice" placeholder="السعر">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">رقم الهاتف</label>
+                                    <input type="text" class="form-control" id="ladiesPhone" placeholder="رقم الهاتف">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-bold">الوصف</label>
+                                    <textarea class="form-control" id="ladiesDescription" rows="2" placeholder="وصف المنتج"></textarea>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-bold">صور المنتج</label>
+                                    <input type="file" class="form-control" id="ladiesImages" accept="image/*" multiple>
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label fw-bold small">أو أدخل روابط صور مباشرة (واحد لكل سطر)</label>
+                                    <textarea class="form-control" id="ladiesImageUrls" rows="2" placeholder="https://example.com/image1.jpg"></textarea>
+                                </div>
+                                <div class="col-12">
+                                    <div id="ladiesImagesPreview" class="d-flex flex-wrap gap-2"></div>
+                                </div>
+                                <div class="col-12">
+                                    <button class="btn btn-primary px-4" id="btnAddLadiesProduct" onclick="addLadiesProduct()"><i class="bi bi-plus-lg me-2"></i>إضافة المنتج</button>
+                                    <div class="mt-2 fw-semibold" id="addLadiesStatus"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                            <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-gem me-2 text-gold"></i>منتجات متجر عرفه للسيدات (<span id="ladiesCount">0</span>)</h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="ladiesList" class="row g-3">
+                                <div class="col-12 text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري التحميل...</div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT DRIVER MODAL -->
+    <div class="modal fade" id="editDriverModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom">
+                    <h6 class="fw-bold">تعديل بيانات السائق</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editDriverId">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الاسم</label>
+                        <input type="text" class="form-control" id="editDriverName">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الهاتف</label>
+                        <input type="tel" class="form-control" id="editDriverPhone">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الحالة</label>
+                        <select class="form-select" id="editDriverStatus">
+                            <option value="active">نشط</option>
+                            <option value="disabled">معطّل</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-dark-blue text-white fw-bold" id="saveEditBtn">حفظ التعديلات</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CREDIT MODAL -->
+    <div class="modal fade" id="passwordModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom">
+                    <h6 class="fw-bold">تغيير كلمة السور</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="passwordDriverId">
+                    <p class="mb-3">السائق: <strong id="passwordDriverName"></strong></p>
+                    <label class="form-label fw-bold">كلمة السور الجديدة</label>
+                    <input type="text" class="form-control" id="newPasswordValue" placeholder="أدخل كلمة السور الجديدة" autocomplete="new-password">
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-dark-blue text-white fw-bold" id="savePasswordBtn">حفظ كلمة السور</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CREDIT MODAL -->
+    <div class="modal fade" id="creditModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom">
+                    <h6 class="fw-bold">شحن رصيد السائق</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="creditDriverId">
+                    <p class="mb-1">السائق: <strong id="creditDriverName"></strong></p>
+                    <p class="mb-3">الرصيد الحالي: <strong class="text-gold" id="creditDriverCurrent"></strong> MRU</p>
+                    <label class="form-label fw-bold">المبلغ (MRU)</label>
+                    <input type="number" class="form-control" id="creditAmount" placeholder="أدخل المبلغ" min="1">
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-success text-white fw-bold" id="confirmCreditBtn">شحن الرصيد</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT CREDIT MODAL -->
+    <div class="modal fade" id="editCreditModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom">
+                    <h6 class="fw-bold">تعديل الرصيد</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editCreditDriverId">
+                    <p class="mb-1">السائق: <strong id="editCreditDriverName"></strong></p>
+                    <p class="mb-3">الرصيد الحالي: <strong class="text-gold" id="editCreditCurrent"></strong> MRU</p>
+                    <label class="form-label fw-bold">الرصيد الجديد (MRU)</label>
+                    <input type="number" class="form-control fw-bold" id="editCreditNewValue" placeholder="أدخل الرصيد الجديد" min="0">
+                    <small class="text-muted">سيتم استبدال الرصيد الحالي بالقيمة الجديدة</small>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-warning text-dark fw-bold" id="confirmEditCreditBtn">حفظ التعديل</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DELETE MODAL -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header bg-danger text-white border-bottom">
+                    <h6 class="fw-bold">تأكيد الحذف</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <input type="hidden" id="deleteDriverId">
+                    <i class="bi bi-exclamation-triangle text-danger fs-1 mb-2"></i>
+                    <p>هل أنت متأكد من حذف <strong id="deleteDriverName"></strong>؟</p>
+                    <small class="text-muted">هذا الإجراء لا يمكن التراجع عنه.</small>
+                </div>
+                <div class="modal-footer border-top justify-content-center">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-danger fw-bold" id="confirmDeleteBtn">حذف نهائي</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SERVICE CONFIRM MODAL -->
+    <div class="modal fade" id="serviceConfirmModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header text-white border-bottom bg-success" id="serviceConfirmHeader">
+                    <h6 class="fw-bold" id="serviceConfirmTitle">تشغيل الخدمة</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <i class="bi bi-power fs-1 mb-2 text-success" id="serviceConfirmIcon"></i>
+                    <p id="serviceConfirmText"></p>
+                    <small class="text-muted" id="serviceConfirmHint"></small>
+                </div>
+                <div class="modal-footer border-top justify-content-center">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-success fw-bold" id="confirmServiceBtn">نعم، شغّل</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT CUSTOMER MODAL -->
+    <div class="modal fade" id="editCustomerModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom">
+                    <h6 class="fw-bold">تعديل بيانات الزبون</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editCustomerId">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الاسم</label>
+                        <input type="text" class="form-control" id="editCustomerName">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الهاتف</label>
+                        <input type="tel" class="form-control" id="editCustomerPhone">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الواتساب</label>
+                        <input type="tel" class="form-control" id="editCustomerWhatsapp">
+                    </div>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-dark-blue text-white fw-bold" id="saveEditCustomerBtn">حفظ التعديلات</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOMER PASSWORD MODAL -->
+    <div class="modal fade" id="customerPasswordModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom">
+                    <h6 class="fw-bold">تغيير كلمة السر</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="customerPasswordId">
+                    <p class="mb-3">الزبون: <strong id="customerPasswordName"></strong></p>
+                    <label class="form-label fw-bold">كلمة السر الجديدة</label>
+                    <input type="text" class="form-control" id="newCustomerPasswordValue" placeholder="أدخل كلمة السر الجديدة" autocomplete="new-password">
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-dark-blue text-white fw-bold" id="saveCustomerPasswordBtn">حفظ كلمة السر</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOMER CREDIT MODAL -->
+    <div class="modal fade" id="customerCreditModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom">
+                    <h6 class="fw-bold">شحن رصيد الزبون</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="customerCreditId">
+                    <p class="mb-1">الزبون: <strong id="customerCreditName"></strong></p>
+                    <p class="mb-3">الرصيد الحالي: <strong class="text-gold" id="customerCreditCurrent"></strong> MRU</p>
+                    <label class="form-label fw-bold">المبلغ (MRU)</label>
+                    <input type="number" class="form-control" id="customerCreditAmount" placeholder="أدخل المبلغ" min="1">
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-success text-white fw-bold" id="confirmCustomerCreditBtn">شحن الرصيد</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT CUSTOMER CREDIT MODAL -->
+    <div class="modal fade" id="editCustomerCreditModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom">
+                    <h6 class="fw-bold">تعديل رصيد الزبون</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editCustomerCreditId">
+                    <p class="mb-1">الزبون: <strong id="editCustomerCreditName"></strong></p>
+                    <p class="mb-3">الرصيد الحالي: <strong class="text-gold" id="editCustomerCreditCurrent"></strong> MRU</p>
+                    <label class="form-label fw-bold">الرصيد الجديد (MRU)</label>
+                    <input type="number" class="form-control fw-bold" id="editCustomerCreditNewValue" placeholder="أدخل الرصيد الجديد" min="0">
+                    <small class="text-muted">سيتم استبدال الرصيد الحالي بالقيمة الجديدة</small>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-warning text-dark fw-bold" id="confirmEditCustomerCreditBtn">حفظ التعديل</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DELETE CUSTOMER MODAL -->
+    <div class="modal fade" id="deleteCustomerModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header bg-danger text-white border-bottom">
+                    <h6 class="fw-bold">تأكيد الحذف</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <input type="hidden" id="deleteCustomerId">
+                    <i class="bi bi-exclamation-triangle text-danger fs-1 mb-2"></i>
+                    <p>هل أنت متأكد من حذف <strong id="deleteCustomerName"></strong>؟</p>
+                    <small class="text-muted">هذا الإجراء لا يمكن التراجع عنه.</small>
+                </div>
+                <div class="modal-footer border-top justify-content-center">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-danger fw-bold" id="confirmDeleteCustomerBtn">حذف نهائي</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT CUSTOMER PRODUCT MODAL -->
+    <div class="modal fade" id="editCustomerProductModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom">
+                    <h6 class="fw-bold"><i class="bi bi-pencil-square me-2 text-gold"></i>تعديل منتج الزبون</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editCustomerProductId">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">اسم المنتج</label>
+                        <input type="text" class="form-control" id="editCustomerProductName">
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold">السعر (MRU)</label>
+                            <input type="number" class="form-control" id="editCustomerProductPrice" min="0">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold">العرض الشهري (MRU)</label>
+                            <input type="number" class="form-control" id="editCustomerProductMonthly" min="0">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">هاتف البائع</label>
+                        <input type="tel" class="form-control" id="editCustomerProductPhone">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الوصف</label>
+                        <textarea class="form-control" id="editCustomerProductDescription" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">عدد المشاهدات</label>
+                        <input type="text" class="form-control" id="editCustomerProductViews" readonly>
+                        <small class="text-muted">يُحسب تلقائياً من تطبيق الزبون</small>
+                    </div>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-dark-blue text-white fw-bold" id="saveEditCustomerProductBtn">حفظ التعديلات</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STORE LOCATION MAP MODAL -->
+    <div class="modal fade" id="storeMapModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom">
+                    <h6 class="fw-bold"><i class="bi bi-geo-alt me-2 text-gold"></i>تحديد موقع المتجر على الخريطة</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="small text-muted mb-2"><i class="bi bi-hand-index-thumb me-1"></i>انقر على الخريطة لتحديد موقع المتجر</div>
+                    <div id="storeMapPicker" style="height:55vh;border-radius:12px;overflow:hidden;"></div>
+                </div>
+                <div class="modal-footer border-top d-flex justify-content-between">
+                    <div class="fw-semibold text-muted small" id="storeMapCoordsText">لم يُحدد بعد</div>
+                    <div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="button" class="btn btn-dark-blue text-white fw-bold" id="confirmStoreLocationBtn">تأكيد الموقع</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT ADMIN MODAL -->
+    <div class="modal fade" id="editAdminModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom">
+                    <h6 class="fw-bold"><i class="bi bi-pencil-square me-2 text-gold"></i>تعديل بيانات المشرف</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editAdminId">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">اسم المستخدم</label>
+                        <input type="text" class="form-control" id="editAdminUsername" disabled>
+                        <small class="text-muted">لا يمكن تغيير اسم المستخدم لأنه مرتبط بحساب المصادقة</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الاسم الكامل</label>
+                        <input type="text" class="form-control" id="editAdminName">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الدور</label>
+                        <select class="form-select" id="editAdminRole">
+                            <option value="supervisor">مشرف</option>
+                            <option value="admin">مدير عام</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="editAdminPermsWrap" style="display:none;">
+                        <label class="form-label fw-bold">مهام المشرف (اختر ما يُسمح له به)</label>
+                        <div class="row g-2" id="editAdminPerms"></div>
+                        <small class="text-muted">اتركها فارغة = وصول كامل لجميع المهام.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">كلمة مرور جديدة <small class="text-muted">(اختياري)</small></label>
+                        <input type="password" class="form-control" id="editAdminPassword" placeholder="اتركها فارغة للإبقاء على الحالية" autocomplete="new-password">
+                        <small class="text-muted">لا يمكن تغيير كلمة مرور مشرف مرتبط بالبريد الإلكتروني إلا من حسابه الخاص</small>
+                    </div>
+                    <div class="fw-semibold" id="editAdminStatus"></div>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-dark-blue text-white fw-bold" id="saveEditAdminBtn">حفظ التعديلات</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DISPATCH PANEL (Custom - RTL safe) -->
+    <div class="dispatch-panel-overlay d-none" id="dispatchOverlay" onclick="toggleDispatchPanel()"></div>
+    <div class="dispatch-panel" id="dispatchPanel">
+        <div class="dispatch-panel-header bg-dark-blue text-white d-flex align-items-center justify-content-between p-3">
+            <h5 class="fw-bold mb-0"><i class="bi bi-car-front me-2"></i>إرسال طلب رحلة</h5>
+            <button type="button" class="btn-close btn-close-white" onclick="toggleDispatchPanel()"></button>
+        </div>
+        <div class="dispatch-panel-body p-3">
+            <div class="mb-3">
+                <label class="form-label fw-bold">اسم الزبون</label>
+                <input type="text" class="form-control" id="passengerName" placeholder="أدخل اسم الزبون">
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">رقم هاتف الزبون</label>
+                <input type="tel" class="form-control" id="passengerPhone" placeholder="رقم الهاتف (اختياري)">
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">نقطة الانطلاق</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" id="pickupCoords" placeholder="انقر على الخريطة" readonly tabindex="-1">
+                    <button class="btn btn-outline-danger" id="clearPickup" tabindex="-1"><i class="bi bi-trash"></i></button>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">عنوان الانطلاق</label>
+                <input type="text" class="form-control" id="pickupAddress" placeholder="أدخل العنوان">
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">نصف قطر البحث: <span class="text-gold fw-bold" id="radiusValue">3 كم</span></label>
+                <input type="range" class="form-range" id="searchRadius" min="1" max="10" value="3" tabindex="-1">
+                <small class="text-muted">تحديد نطاق السائقين القريبين فقط</small>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">نقطة الوجهة</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" id="dropoffCoords" placeholder="نقرة ثانية = الوجهة" readonly tabindex="-1">
+                    <button class="btn btn-outline-danger" id="clearDropoff" tabindex="-1"><i class="bi bi-trash"></i></button>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">عنوان الوجهة</label>
+                <input type="text" class="form-control" id="dropoffAddress" placeholder="أدخل عنوان الوجهة">
+            </div>
+            <div class="mb-3" id="distanceInfo" style="display:none;">
+                <div class="bg-light rounded-3 p-3 text-center">
+                    <small class="text-muted">المسافة</small>
+                    <div class="fs-5 fw-bold text-dark-blue" id="realDistance">0 كم</div>
+                    <small class="text-muted">السعر التلقائي</small>
+                    <div class="fs-5 fw-bold text-gold" id="autoFare">0 MRU</div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">سعر الرحلة (MRU)</label>
+                <input type="text" inputmode="numeric" class="form-control fw-bold text-center" id="fareInput" value="350" dir="ltr" placeholder="أدخل السعر" tabindex="-1">
+                <small class="text-muted">يُحدد يدوياً من قِبل المشرف</small>
+            </div>
+            <button class="btn btn-gold text-white fw-bold w-100 py-3" id="dispatchBtn" disabled>
+                <i class="bi bi-send-fill me-2"></i>إرسال تنبيه للسائقين
+            </button>
+            <div class="text-center mt-2 fw-semibold" id="dispatchStatus"></div>
+        </div>
+    </div>
+
+    <!-- FLOATING DISPATCH TOGGLE BUTTON (always visible) -->
+    <button class="dispatch-fab" id="dispatchFab" onclick="toggleDispatchPanel()">
+        <i class="bi bi-send-fill"></i>
+        <span class="d-none d-sm-inline ms-2">إرسال رحلة</span>
+    </button>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/compressorjs/1.2.1/compressor.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <div id="toastContainer" class="position-fixed bottom-0 end-0 p-3" style="z-index:1100;">
+        <style>
+            .toast-custom {
+                background: white; border-radius: 12px; padding: 14px 18px; margin-bottom: 10px;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.15); border-right: 4px solid #0B1849;
+                animation: slideIn 0.3s ease; display: flex; align-items: center; gap: 12px;
+                min-width: 280px; max-width: 400px;
+            }
+            .toast-custom.success { border-right-color: #28a745; }
+            .toast-custom.error { border-right-color: #dc3545; }
+            .toast-custom.warning { border-right-color: #ffc107; }
+            .toast-icon { font-size: 22px; }
+            .toast-msg { flex: 1; font-size: 14px; color: #333; }
+            .toast-close { cursor: pointer; color: #999; font-size: 18px; line-height: 1; }
+            @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+            /* ============================================ */
+            /* CUSTOM MODAL */
+            /* ============================================ */
+            .ara-modal-overlay {
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+                z-index: 99999; display: none;
+                align-items: center; justify-content: center;
+                animation: araFadeIn 0.2s ease;
+            }
+            .ara-modal-overlay.show { display: flex; }
+            .ara-modal {
+                background: white; border-radius: 16px; padding: 32px 28px 24px;
+                max-width: 420px; width: 90%; text-align: center;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+                animation: araScaleIn 0.25s ease;
+                direction: rtl;
+            }
+            .ara-modal-icon {
+                width: 64px; height: 64px; border-radius: 50%;
+                display: flex; align-items: center; justify-content: center;
+                margin: 0 auto 16px; font-size: 28px;
+            }
+            .ara-modal-icon.info { background: #e8f0fe; color: #0B1849; }
+            .ara-modal-icon.warning { background: #fff3cd; color: #856404; }
+            .ara-modal-icon.error { background: #fde8e8; color: #dc3545; }
+            .ara-modal-icon.success { background: #d4edda; color: #155724; }
+            .ara-modal-icon.question { background: #e8f0fe; color: #0B1849; }
+            .ara-modal h5 { font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #1a1a2e; }
+            .ara-modal p { font-size: 14px; color: #666; margin-bottom: 24px; line-height: 1.6; }
+            .ara-modal .btn-group { display: flex; gap: 10px; }
+            .ara-modal .btn-group .btn { flex: 1; border-radius: 10px; font-weight: 600; padding: 10px; font-size: 14px; }
+            .ara-modal .btn-ok { background: #0B1849; color: white; border: none; }
+            .ara-modal .btn-ok:hover { background: #1a2a6e; }
+            .ara-modal .btn-cancel { background: #f0f0f0; color: #666; border: none; }
+            .ara-modal .btn-cancel:hover { background: #e0e0e0; }
+            .ara-modal .btn-danger { background: #dc3545; color: white; border: none; }
+            .ara-modal .btn-danger:hover { background: #c82333; }
+            @keyframes araFadeIn { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes araScaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        </style>
+    </div>
+
+    <!-- DELIVERY PRICE MODAL -->
+    <div class="modal fade" id="deliveryPriceModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title fw-bold text-dark-blue"><i class="bi bi-cash-coin me-2 text-gold"></i>إرسال سعر التوصيلة</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2"><strong>الزبون:</strong> <span id="deliveryPriceCustomer"></span></div>
+                    <div class="mb-2"><strong>مستلم:</strong> <span id="deliveryPriceReceiver"></span></div>
+                    <div class="mb-2"><strong>المرسل (الحي):</strong> <span id="deliveryPriceSender"></span></div>
+                    <div class="mb-2"><strong>المستلم (الحي):</strong> <span id="deliveryPriceReceiverDistrict"></span></div>
+                    <div class="mb-2"><strong>نقطة الانطلاق:</strong> <span id="deliveryPricePickup"></span></div>
+                    <div class="mb-2"><strong>نقطة الوجهة:</strong> <span id="deliveryPriceDropoff"></span></div>
+                    <div class="mb-2"><strong>ملاحظات:</strong> <span id="deliveryPriceNotes"></span></div>
+                    <div class="mb-3 d-none" id="deliveryPriceVoiceGroup">
+                        <div class="d-flex align-items-center gap-2 p-2 border rounded-3 bg-light">
+                            <i class="bi bi-mic-fill text-primary"></i>
+                            <span class="small fw-bold">رسالة صوتية من الزبون:</span>
+                            <button type="button" class="btn btn-sm btn-primary ms-auto" id="deliveryPriceVoiceBtn" onclick="toggleDeliveryPriceVoice()"><i class="bi bi-play-fill"></i> تشغيل</button>
+                            <audio id="deliveryPriceVoice" preload="auto" style="display:none;"></audio>
+                        </div>
+                    </div>
+                    <div class="mb-3"><a href="#" target="_blank" rel="noopener" id="deliveryPriceMapLink" class="btn btn-sm btn-outline-primary"><i class="bi bi-geo-alt me-1"></i>فتح المسار في خرائط جوجل</a></div>
+                    <input type="hidden" id="deliveryPriceId">
+                    <label class="form-label fw-bold">السعر التقديري (MRU)</label>
+                    <input type="number" class="form-control" id="deliveryPriceValue" placeholder="مثال: 150">
+                    <div class="form-text">يستطيع المشرف الآن رؤية نقطتي الانطلاق والوجهة لتقدير السعر بدقة</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+                    <button type="button" class="btn btn-gold text-white fw-bold" id="confirmDeliveryPriceBtn">إرسال السعر</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOM MODAL -->
+    <div class="ara-modal-overlay" id="araModalOverlay">
+        <div class="ara-modal" id="araModal">
+            <div class="ara-modal-icon" id="araModalIcon">
+                <i class="bi bi-question-circle"></i>
+            </div>
+            <h5 id="araModalTitle">تأكيد</h5>
+            <p id="araModalMessage">هل أنت متأكد؟</p>
+            <div class="ara-modal-input-wrap d-none" id="araModalInputWrap">
+                <input type="text" class="form-control" id="araModalInput" placeholder="">
+            </div>
+            <div class="btn-group" id="araModalButtons">
+                <button class="btn btn-cancel" id="araModalCancel">إلغاء</button>
+                <button class="btn btn-ok" id="araModalConfirm">تأكيد</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- IMAGE VIEWER MODAL -->
+    <div class="modal fade" id="imageViewerModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 bg-dark">
+                <div class="modal-header border-0">
+                    <h6 class="fw-bold text-white mb-0"><i class="bi bi-camera me-2 text-gold"></i>لقطة شاشة التحويل</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img id="imageViewerImg" src="" class="img-fluid rounded-3" style="max-height:80vh;" alt="لقطة الشاشة">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js?v=20260818"></script>
+</body>
+</html>
+

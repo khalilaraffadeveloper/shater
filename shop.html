@@ -1,0 +1,262 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>شاطر - المتجر</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Cairo', sans-serif; }
+        body { background: #f5f5f5; }
+        .prod-card { border: none; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.08); transition: transform 0.2s; background: white; }
+        .prod-card:hover { transform: translateY(-2px); }
+        .prod-img { width: 100%; height: 180px; object-fit: contain; background: #f5f5f5; }
+        .prod-thumbs { display: flex; gap: 4px; padding: 0 12px 8px; overflow-x: auto; }
+        .prod-thumbs img { width: 50px; height: 50px; object-fit: cover; border-radius: 8px; flex-shrink: 0; cursor: pointer; border: 2px solid transparent; }
+        .prod-thumbs img.active { border-color: #D4A843; }
+        .type-badge { position: absolute; top: 10px; right: 10px; }
+        .price-tag { color: #D4A843; font-weight: 800; font-size: 20px; }
+        .btn-call { background: #2E7D32; border-color: #2E7D32; }
+        .btn-whatsapp { background: #25D366; border-color: #25D366; }
+        .btn-video { background: #FF0000; border-color: #FF0000; }
+        .header-section { background: linear-gradient(135deg, #0B1849, #1a2a6c); color: white; padding: 20px; text-align: center; }
+        .header-logo { width: 60px; height: 60px; border-radius: 50%; background: white; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; }
+        .header-logo img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; }
+        .empty-state { text-align: center; padding: 60px 20px; color: #999; }
+        .empty-state i { font-size: 60px; margin-bottom: 15px; }
+        .filter-bar { background: white; padding: 12px 16px; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 100; }
+        .filter-btn { border-radius: 20px; padding: 4px 16px; font-size: 13px; border: 1px solid #ddd; background: white; color: #555; }
+        .filter-btn.active { background: #0B1849; color: white; border-color: #0B1849; }
+        .gallery-modal img { width: 100%; max-height: 80vh; object-fit: contain; }
+    .video-modal iframe { border: none; border-radius: 12px; }
+    .video-thumb-btn { position: relative; display: inline-flex; align-items: center; gap: 6px; background: #FF0000; color: #fff; border: none; border-radius: 8px; padding: 6px 14px; font-size: 13px; cursor: pointer; transition: 0.2s; }
+    .video-thumb-btn:hover { background: #CC0000; color: #fff; }
+    .video-thumb-btn i { font-size: 16px; }
+    </style>
+</head>
+<body>
+
+    <div class="header-section">
+        <div class="header-logo">
+            <img src="img/logo.png" alt="شاطر">
+        </div>
+        <h5 class="fw-bold mb-0">شاطر</h5>
+        <small>المتجر — سيارات ومنتجات</small>
+    </div>
+
+    <div class="filter-bar d-flex gap-2 overflow-auto">
+        <button class="filter-btn active" data-filter="all">الكل</button>
+        <button class="filter-btn" data-filter="car">سيارات</button>
+        <button class="filter-btn" data-filter="other">أخرى</button>
+    </div>
+
+    <div class="container py-3">
+        <div id="productsContainer" class="row g-3">
+            <div class="col-12 text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <div class="mt-2 text-muted">جاري التحميل...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image gallery modal -->
+    <div class="modal fade" id="imageModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 bg-transparent shadow-none">
+                <div class="modal-body p-0 text-center">
+                    <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" data-bs-dismiss="modal"></button>
+                    <img id="galleryImage" class="gallery-modal img-fluid rounded-3" src="" alt="">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Video embed modal -->
+    <div class="modal fade video-modal" id="videoModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 bg-dark shadow-none">
+                <div class="modal-body p-2 text-center position-relative">
+                    <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3 z-1" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                    <div id="videoPlayerContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script>
+        function getYouTubeId(url) {
+            if (!url) return null;
+            const patterns = [
+                /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+                /^([a-zA-Z0-9_-]{11})$/
+            ];
+            for (const p of patterns) {
+                const m = url.match(p);
+                if (m) return m[1];
+            }
+            return null;
+        }
+        function getTikTokId(url) {
+            if (!url) return null;
+            const patterns = [
+                /tiktok\.com\/[^\/]+\/video\/(\d+)/,
+                /tiktok\.com\/video\/(\d+)/,
+                /tiktok\.com\/t\/([\w-]+)/
+            ];
+            for (const p of patterns) {
+                const m = url.match(p);
+                if (m) return m[1];
+            }
+            return null;
+        }
+        var videoGen = 0;
+        function playVideo(videoUrl) {
+            const container = document.getElementById('videoPlayerContainer');
+            const modal = new bootstrap.Modal(document.getElementById('videoModal'));
+            document.getElementById('videoModal').addEventListener('hidden.bs.modal', function () { container.innerHTML = ''; }, { once: true });
+            const gen = ++videoGen;
+
+            function activateBlocker() {
+                if (gen !== videoGen) return;
+                const iframe = container.querySelector('iframe');
+                if (!iframe || container.querySelector('.video-click-blocker')) return;
+                const blocker = document.createElement('div');
+                blocker.className = 'video-click-blocker';
+                blocker.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;cursor:default;z-index:0;';
+                iframe.parentNode.insertBefore(blocker, iframe.nextSibling);
+            }
+
+            function buildEmbed(iframeHtml, centered) {
+                container.innerHTML = `<div style="position:relative;width:100%;${centered ? 'display:flex;justify-content:center;' : ''}">${iframeHtml}</div>`;
+                const iframe = container.querySelector('iframe');
+                let firstLoad = true;
+                iframe.addEventListener('load', function () {
+                    if (firstLoad) { firstLoad = false; return; }
+                    activateBlocker();
+                });
+                setTimeout(activateBlocker, 6000);
+            }
+
+            const ytId = getYouTubeId(videoUrl);
+            if (ytId) {
+                buildEmbed(`<iframe src="https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&controls=1&fs=0" style="width:100%;max-height:70vh;aspect-ratio:16/9;" allow="autoplay; encrypted-media" allowfullscreen></iframe>`, false);
+                modal.show();
+                return;
+            }
+            const ttId = getTikTokId(videoUrl);
+            if (ttId) {
+                buildEmbed(`<iframe src="https://www.tiktok.com/embed/v2/${ttId}" style="height:70vh;max-width:100%;aspect-ratio:9/16;" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`, true);
+                modal.show();
+                return;
+            }
+            window.open(videoUrl, '_blank');
+        }
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDsO_-6QFQKgIMF7VROzZYK22kyKyjQ_ZM",
+            authDomain: "shater-cars.firebaseapp.com",
+            projectId: "shater-cars",
+            storageBucket: "shater-cars.firebasestorage.app",
+            messagingSenderId: "891304990952",
+            appId: "1:891304990952:web:6b356e9da561b57fc7915d"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const typeLabels = { car: 'سيارة', other: 'أخرى' };
+        const typeIcons = { car: 'bi-car-front-fill', other: 'bi-box-seam' };
+        const typeBadgeColors = { car: '#FF9800', other: '#9C27B0' };
+        let currentFilter = 'all';
+        let allProducts = [];
+
+        function callPhone(phone) {
+            if (!phone) return;
+            window.open('tel:' + phone, '_system');
+        }
+
+        function openWhatsApp(phone, name) {
+            if (!phone) return;
+            var text = encodeURIComponent('مرحباً بخصوص ' + decodeURIComponent(name));
+            window.open('whatsapp://send/?phone=' + phone + '&text=' + text, '_system');
+        }
+
+        function renderProducts(filter) {
+            const container = document.getElementById('productsContainer');
+            const filtered = filter === 'all' ? allProducts : allProducts.filter(p => p.type === filter);
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="col-12"><div class="empty-state"><i class="bi bi-shop text-muted"></i><p>لا توجد منتجات في هذا القسم</p></div></div>';
+                return;
+            }
+            container.innerHTML = filtered.map((p, idx) => {
+                const validImages = (p.images || []).filter(u => u && (u.startsWith('http') || u.startsWith('data:image')));
+                const mainImg = validImages.length > 0 ? validImages[0] : null;
+                const thumbs = validImages.length > 1 ? validImages.slice(0, 4) : [];
+                const imgHtml = mainImg
+                    ? `<img src="${mainImg}" class="prod-img" onclick="openGallery('${mainImg.replace(/'/g, "\\'")}')" style="cursor:pointer;" onerror="this.style.display='none'">`
+                    : `<div style="height:180px;background:#e0e0e0;display:flex;align-items:center;justify-content:center;"><i class="${typeIcons[p.type] || 'bi-box'}" style="font-size:50px;color:#bbb;"></i></div>`;
+                const thumbsHtml = thumbs.length > 0
+                    ? `<div class="prod-thumbs">${validImages.map(u => `<img src="${u}" onclick="openGallery('${u.replace(/'/g, "\\'")}')" alt="" onerror="this.style.display='none'">`).join('')}</div>`
+                    : '';
+                const phoneClean = p.phone ? '222' + String(p.phone).replace(/^0+/, '') : '';
+                const videoHtml = p.videoUrl ? `<button class="video-thumb-btn" onclick="playVideo('${p.videoUrl.replace(/'/g, "\\'")}')"><i class="bi bi-play-fill"></i> فيديو</button>` : '';
+                return `<div class="col-md-4 col-sm-6">
+                    <div class="prod-card position-relative">
+                        <span class="type-badge badge" style="background:${typeBadgeColors[p.type] || '#6c757d'};color:white;"><i class="${typeIcons[p.type] || 'bi-box'}"></i> ${typeLabels[p.type] || p.type}</span>
+                        ${imgHtml}
+                        ${thumbsHtml}
+                        <div class="p-3 pt-2">
+                            <h6 class="fw-bold mb-1">${p.name || ''}</h6>
+                            <p class="text-muted small mb-2" style="font-size:13px;">${p.description || ''}</p>
+                            <div class="price-tag mb-2">${p.price || 0} <small>MRU</small></div>
+                            <div class="d-flex gap-2">
+                                <button onclick="callPhone('${p.phone || ''}')" class="btn btn-sm text-white btn-call flex-fill"><i class="bi bi-telephone-fill"></i> اتصال</button>
+                                <button onclick="openWhatsApp('${phoneClean}','${encodeURIComponent(p.name || '')}')" class="btn btn-sm text-white btn-whatsapp flex-fill"><i class="bi bi-whatsapp"></i> واتساب</button>
+                                ${videoHtml}
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function loadProducts() {
+            const container = document.getElementById('productsContainer');
+            db.collection('products').where('active', '==', true)
+                .get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        container.innerHTML = '<div class="col-12"><div class="empty-state"><i class="bi bi-shop text-muted"></i><p>لا توجد منتجات حالياً</p></div></div>';
+                        allProducts = [];
+                        return;
+                    }
+                    allProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    allProducts.sort((a, b) => {
+                        const tA = a.createdAt?.toMillis?.() ?? 0;
+                        const tB = b.createdAt?.toMillis?.() ?? 0;
+                        return tB - tA;
+                    });
+                    renderProducts(currentFilter);
+                })
+                .catch(err => {
+                    container.innerHTML = `<div class="col-12 text-center text-danger py-5">حدث خطأ: ${err.message}</div>`;
+                });
+        }
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.dataset.filter;
+                renderProducts(currentFilter);
+            });
+        });
+
+        loadProducts();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
