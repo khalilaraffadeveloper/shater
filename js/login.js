@@ -18,7 +18,7 @@ try {
 }
 
 firebase.auth().onAuthStateChanged(function(user) {
-    if (user && sessionStorage.getItem('ARAVA_admin_logged_in') === 'true') {
+    if (user && sessionStorage.getItem('SHATER_admin_logged_in') === 'true') {
         window.location.href = 'dashboard.html';
     }
 });
@@ -133,11 +133,11 @@ async function doLogin() {
     }
 
     if (matched) {
-        sessionStorage.setItem('ARAVA_admin_logged_in', 'true');
-        sessionStorage.setItem('ARAVA_admin_name', matched.name || matched.username || user);
-        sessionStorage.setItem('ARAVA_admin_role', matched.role || 'supervisor');
-        sessionStorage.setItem('ARAVA_admin_perms', JSON.stringify(matched.permissions || []));
-        sessionStorage.setItem('ARAVA_admin_username', matched.username || matched.name || user);
+        sessionStorage.setItem('SHATER_admin_logged_in', 'true');
+        sessionStorage.setItem('SHATER_admin_name', matched.name || matched.username || user);
+        sessionStorage.setItem('SHATER_admin_role', matched.role || 'supervisor');
+        sessionStorage.setItem('SHATER_admin_perms', JSON.stringify(matched.permissions || []));
+        sessionStorage.setItem('SHATER_admin_username', matched.username || matched.name || user);
         window.location.href = 'dashboard.html';
     } else {
         if (auth) {

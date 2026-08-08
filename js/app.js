@@ -1,5 +1,5 @@
 ﻿// ============================================
-// ARAVA ADMIN DASHBOARD - app.js (Bootstrap 5)
+// SHATER ADMIN DASHBOARD - app.js (Bootstrap 5)
 // Two-click map: pickup + dropoff, auto-fare
 // ============================================
 
@@ -16,14 +16,14 @@ let customerProductsListener = null;
 // ============================================
 // AUTH CHECK
 // ============================================
-if (sessionStorage.getItem('ARAVA_admin_logged_in') !== 'true') {
+if (sessionStorage.getItem('SHATER_admin_logged_in') !== 'true') {
     window.location.href = 'index.html';
 }
 
 // Also verify with Firebase Auth if available
 try {
     firebase.auth().onAuthStateChanged(function(user) {
-        if (!user && sessionStorage.getItem('ARAVA_admin_logged_in') === 'true') {
+        if (!user && sessionStorage.getItem('SHATER_admin_logged_in') === 'true') {
             // Firebase session expired but local session exists — keep it for now
             console.warn('Firebase auth expired, using local session');
         }
@@ -31,11 +31,11 @@ try {
 } catch (e) {}
 
 document.getElementById('logoutBtn').addEventListener('click', () => {
-    sessionStorage.removeItem('ARAVA_admin_logged_in');
-    sessionStorage.removeItem('ARAVA_admin_name');
-    sessionStorage.removeItem('ARAVA_admin_role');
-    sessionStorage.removeItem('ARAVA_admin_perms');
-    sessionStorage.removeItem('ARAVA_admin_username');
+    sessionStorage.removeItem('SHATER_admin_logged_in');
+    sessionStorage.removeItem('SHATER_admin_name');
+    sessionStorage.removeItem('SHATER_admin_role');
+    sessionStorage.removeItem('SHATER_admin_perms');
+    sessionStorage.removeItem('SHATER_admin_username');
     try { firebase.auth().signOut(); } catch (e) {}
     window.location.href = 'index.html';
 });
@@ -127,13 +127,13 @@ const PAGE_ORDER = [
 ];
 
 function adminRole() {
-    return sessionStorage.getItem('ARAVA_admin_role') || 'admin';
+    return sessionStorage.getItem('SHATER_admin_role') || 'admin';
 }
 
 function adminPermissions() {
     if (adminRole() === 'admin') return ALL_PERMISSIONS.slice();
     let p = [];
-    try { p = JSON.parse(sessionStorage.getItem('ARAVA_admin_perms') || '[]'); } catch (e) { p = []; }
+    try { p = JSON.parse(sessionStorage.getItem('SHATER_admin_perms') || '[]'); } catch (e) { p = []; }
     if (!Array.isArray(p) || p.length === 0) return ALL_PERMISSIONS.slice();
     return p;
 }
@@ -718,7 +718,7 @@ const pageTitles = {
     promotions: 'العروض والنشاطات',
     products: 'المتجر والمنتجات',
     stores: 'المتاجر والنشاطات الذكية',
-    ladies: 'متجر عرفه للسيدات'
+    ladies: 'متجر شاطر للسيدات'
 };
 
 function navigateToPage(page) {
@@ -1092,7 +1092,7 @@ document.getElementById('ridesCleanupAuto')?.addEventListener('change', async (e
 });
 
 window.clearRidesNow = async function () {
-    if (sessionStorage.getItem('ARAVA_admin_role') !== 'admin') {
+    if (sessionStorage.getItem('SHATER_admin_role') !== 'admin') {
         ARAalert('هذا الإجراء متاح فقط لصلاحية مدير عام', 'warning');
         return;
     }
@@ -1561,7 +1561,7 @@ document.getElementById('registerDriverBtn').addEventListener('click', async () 
 async function loadDriversList() {
     if (!requireDb()) return;
     const tbody = document.getElementById('driversTableBody');
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري تحميل السائقين...</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل السائقين...</div></td></tr>';
     try {
         const snapshot = await db.collection('drivers').get();
         allDrivers = [];
@@ -1752,7 +1752,7 @@ let allUnregisteredCustomers = [];
 async function loadUnregisteredCustomers() {
     if (!requireDb()) return;
     const tbody = document.getElementById('unregCustomersTableBody');
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري تحميل البيانات...</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل البيانات...</div></td></tr>';
     try {
         const [ridesSnap, custSnap] = await Promise.all([
             db.collection('rides').orderBy('createdAt', 'desc').limit(500).get(),
@@ -1830,7 +1830,7 @@ window.exportUnregisteredCustomersCSV = function () {
 async function loadCustomersList() {
     if (!requireDb()) return;
     const tbody = document.getElementById('customersTableBody');
-    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري تحميل الزبائن...</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل الزبائن...</div></td></tr>';
     try {
         const snapshot = await db.collection('customers').get();
         allCustomers = [];
@@ -1912,7 +1912,7 @@ async function searchCustomerProfile() {
         return;
     }
 
-    resultEl.innerHTML = '<div class="text-muted py-3"><div class="ARAVA-spinner d-inline-block me-2"></div>جاري البحث...</div>';
+    resultEl.innerHTML = '<div class="text-muted py-3"><div class="SHATER-spinner d-inline-block me-2"></div>جاري البحث...</div>';
 
     try {
         let candidates = [];
@@ -1974,7 +1974,7 @@ function showCustomerMatch(index) {
 
 async function showCustomerProfile(customer) {
     const resultEl = document.getElementById('customerProfileResult');
-    resultEl.innerHTML = '<div class="text-muted py-3"><div class="ARAVA-spinner d-inline-block me-2"></div>جاري تحميل سجل الرحلات...</div>';
+    resultEl.innerHTML = '<div class="text-muted py-3"><div class="SHATER-spinner d-inline-block me-2"></div>جاري تحميل سجل الرحلات...</div>';
 
     // تحميل سجل الرحلات (بمعرّف الزبون أو رقم هاتفه)
     const ridesMap = {};
@@ -2387,7 +2387,7 @@ async function loadRechargeRequests() {
     if (!requireDb()) return;
     if (rechargeRequestsUnsubscribe) { rechargeRequestsUnsubscribe(); rechargeRequestsUnsubscribe = null; }
     const tbody = document.getElementById('rechargeRequestsTableBody');
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري تحميل الطلبات...</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل الطلبات...</div></td></tr>';
     try {
         rechargeRequestsUnsubscribe = db.collection('recharge_requests')
             .orderBy('createdAt', 'desc').limit(100)
@@ -2528,7 +2528,7 @@ async function loadRidesList() {
     if (!requireDb()) return;
     if (ridesListUnsubscribe) { ridesListUnsubscribe(); ridesListUnsubscribe = null; }
     const tbody = document.getElementById('ridesTableBody');
-    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري تحميل الرحلات...</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل الرحلات...</div></td></tr>';
     try {
         ridesListUnsubscribe = db.collection('rides').orderBy('createdAt', 'desc').limit(100)
             .onSnapshot(snapshot => {
@@ -2779,7 +2779,7 @@ function initDeliveriesListener() {
     if (deliveriesUnsubscribe) { deliveriesUnsubscribe(); deliveriesUnsubscribe = null; }
     const tbody = document.getElementById('deliveriesTableBody');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري تحميل التوصيلات...</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل التوصيلات...</div></td></tr>';
     try {
         deliveriesUnsubscribe = db.collection('delivery_requests').orderBy('createdAt', 'desc').limit(150)
             .onSnapshot(snap => {
@@ -3388,7 +3388,7 @@ window.clearNotifLog = function () {
 };
 
 window.confirmResetAllData = async function () {
-    if (sessionStorage.getItem('ARAVA_admin_role') !== 'admin') {
+    if (sessionStorage.getItem('SHATER_admin_role') !== 'admin') {
         ARAalert('هذا الإجراء متاح فقط لصلاحية مدير عام', 'warning');
         return;
     }
@@ -3582,7 +3582,7 @@ document.getElementById('sendMsgBtn')?.addEventListener('click', async () => {
     const recipientIds = Array.from(recipientsSel.selectedOptions).map(o => o.value);
     const typeSel = document.getElementById('msgRecipientType');
     const recipientKind = typeSel ? typeSel.value : 'drivers';
-    const senderName = sessionStorage.getItem('ARAVA_admin_name') || 'المدير';
+    const senderName = sessionStorage.getItem('SHATER_admin_name') || 'المدير';
     const msg = { type, sentBy: senderName, readBy: [], timestamp: firebase.firestore.FieldValue.serverTimestamp(), recipientKind };
 
     if (recipientIds.includes('all') || msgSelectAllChecked) {
@@ -3671,7 +3671,7 @@ async function loadSentMessages() {
     if (!requireDb()) return;
     const container = document.getElementById('msgListContainer');
     if (!container) return;
-    container.innerHTML = '<div class="text-center py-4"><div class="ARAVA-spinner"></div></div>';
+    container.innerHTML = '<div class="text-center py-4"><div class="SHATER-spinner"></div></div>';
 
     try {
         const snap = await db.collection('messages').orderBy('timestamp', 'desc').limit(50).get();
@@ -3723,7 +3723,7 @@ async function loadSentCustomerMessages() {
     if (!requireDb()) return;
     const container = document.getElementById('msgListContainerCustomers');
     if (!container) return;
-    container.innerHTML = '<div class="text-center py-4"><div class="ARAVA-spinner"></div></div>';
+    container.innerHTML = '<div class="text-center py-4"><div class="SHATER-spinner"></div></div>';
 
     try {
         const snap = await db.collection('customer_messages').orderBy('timestamp', 'desc').limit(50).get();
@@ -3811,7 +3811,7 @@ window.sendAnnouncement = async function () {
     if (!title && !content) { showStatus('annSendStatus', 'اكتب عنوان الإعلان أو نصه', 'error'); return; }
     if (!content) { showStatus('annSendStatus', 'اكتب نص الإعلان', 'error'); return; }
 
-    const senderName = sessionStorage.getItem('ARAVA_admin_name') || 'المدير';
+    const senderName = sessionStorage.getItem('SHATER_admin_name') || 'المدير';
     try {
         await db.collection('announcements').add({
             title: title || 'إعلان من الإدارة',
@@ -3833,7 +3833,7 @@ async function loadAnnouncements() {
     if (!requireDb()) return;
     const container = document.getElementById('annListContainer');
     if (!container) return;
-    container.innerHTML = '<div class="text-center py-4"><div class="ARAVA-spinner"></div></div>';
+    container.innerHTML = '<div class="text-center py-4"><div class="SHATER-spinner"></div></div>';
 
     try {
         const snap = await db.collection('announcements').orderBy('timestamp', 'desc').limit(50).get();
@@ -3897,7 +3897,7 @@ window.sendCustomerAnnouncement = async function () {
     if (!title && !content) { showStatus('custAnnSendStatus', 'اكتب عنوان الإعلان أو نصه', 'error'); return; }
     if (!content) { showStatus('custAnnSendStatus', 'اكتب نص الإعلان', 'error'); return; }
 
-    const senderName = sessionStorage.getItem('ARAVA_admin_name') || 'المدير';
+    const senderName = sessionStorage.getItem('SHATER_admin_name') || 'المدير';
     try {
         await db.collection('customer_announcements').add({
             title: title || 'إعلان من الإدارة',
@@ -3919,7 +3919,7 @@ async function loadCustomerAnnouncements() {
     if (!requireDb()) return;
     const container = document.getElementById('custAnnListContainer');
     if (!container) return;
-    container.innerHTML = '<div class="text-center py-4"><div class="ARAVA-spinner"></div></div>';
+    container.innerHTML = '<div class="text-center py-4"><div class="SHATER-spinner"></div></div>';
 
     try {
         const snap = await db.collection('customer_announcements').orderBy('timestamp', 'desc').limit(50).get();
@@ -3978,7 +3978,7 @@ window.clearOldCustomerAnnouncements = async function () {
 async function loadAdminsList() {
     if (!requireDb()) return;
     const tbody = document.getElementById('adminsTableBody');
-    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري تحميل المشرفين...</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل المشرفين...</div></td></tr>';
     try {
         const snapshot = await db.collection('admins').get();
         const admins = [];
@@ -4080,7 +4080,7 @@ document.getElementById('saveEditAdminBtn').addEventListener('click', async () =
         let passwordMsg = '';
         if (newPass) {
             const currentUser = firebase.auth().currentUser;
-            const myUsername = sessionStorage.getItem('ARAVA_admin_username') || '';
+            const myUsername = sessionStorage.getItem('SHATER_admin_username') || '';
             const isSelfUid = !!(target.authUid && currentUser && currentUser.uid === target.authUid);
             const isSelf = isSelfUid || myUsername === target.username;
             if (isSelfUid) {
@@ -4100,9 +4100,9 @@ document.getElementById('saveEditAdminBtn').addEventListener('click', async () =
         }
         const currentUser = firebase.auth().currentUser;
         if (target.authUid && currentUser && currentUser.uid === target.authUid) {
-            sessionStorage.setItem('ARAVA_admin_role', role);
-            sessionStorage.setItem('ARAVA_admin_perms', JSON.stringify(permissions));
-            sessionStorage.setItem('ARAVA_admin_name', name);
+            sessionStorage.setItem('SHATER_admin_role', role);
+            sessionStorage.setItem('SHATER_admin_perms', JSON.stringify(permissions));
+            sessionStorage.setItem('SHATER_admin_name', name);
             applyRoleVisibility();
         }
         statusEl.className = 'fw-semibold text-success';
@@ -4283,7 +4283,7 @@ function applyRoleVisibility() {
         link.style.display = (req && canPerm(req)) ? '' : 'none';
     });
     const nameEl = document.getElementById('adminName');
-    if (nameEl) nameEl.textContent = sessionStorage.getItem('ARAVA_admin_name') || '';
+    if (nameEl) nameEl.textContent = sessionStorage.getItem('SHATER_admin_name') || '';
     const roleEl = document.getElementById('adminRoleLabel');
     if (roleEl) roleEl.textContent = role === 'admin' ? 'مدير عام' : 'مشرف';
     hideByPermission(document);
@@ -4403,7 +4403,7 @@ window.addPromotion = async function() {
 async function loadPromotionsList() {
     if (!requireDb()) return;
     const list = document.getElementById('promotionsList');
-    list.innerHTML = '<div class="col-12 text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري التحميل...</div></div>';
+    list.innerHTML = '<div class="col-12 text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري التحميل...</div></div>';
     try {
         const snap = await db.collection('promotions').orderBy('createdAt', 'desc').get();
         document.getElementById('promoCount').textContent = snap.size;
@@ -4574,7 +4574,7 @@ window.addProduct = async function() {
 async function loadProductsList() {
     if (!requireDb()) return;
     const list = document.getElementById('productsList');
-    list.innerHTML = '<div class="col-12 text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري التحميل...</div></div>';
+    list.innerHTML = '<div class="col-12 text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري التحميل...</div></div>';
     try {
         const snap = await db.collection('products').orderBy('createdAt', 'desc').get();
         document.getElementById('productCount').textContent = snap.size;
@@ -4794,7 +4794,7 @@ window.addStore = async function() {
 async function loadStoresList() {
     if (!requireDb()) return;
     const list = document.getElementById('storesList');
-    list.innerHTML = '<div class="col-12 text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري التحميل...</div></div>';
+    list.innerHTML = '<div class="col-12 text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري التحميل...</div></div>';
     try {
         const snap = await db.collection('stores_promotion').orderBy('createdAt', 'desc').get();
         document.getElementById('storeCount').textContent = snap.size;
@@ -4937,7 +4937,7 @@ window.addLadiesProduct = async function() {
 async function loadLadiesProducts() {
     if (!requireDb()) return;
     const list = document.getElementById('ladiesList');
-    list.innerHTML = '<div class="col-12 text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري التحميل...</div></div>';
+    list.innerHTML = '<div class="col-12 text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري التحميل...</div></div>';
     try {
         const snap = await db.collection('ladies_products').orderBy('createdAt', 'desc').get();
         document.getElementById('ladiesCount').textContent = snap.size;
@@ -5444,7 +5444,7 @@ async function loadDevices() {
     if (!requireDb()) return;
     const tbody = document.getElementById('devicesTableBody');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="ARAVA-spinner"></div><div class="mt-2 text-muted small">جاري تحميل الأجهزة...</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل الأجهزة...</div></td></tr>';
     const setCount = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
 
     try {
