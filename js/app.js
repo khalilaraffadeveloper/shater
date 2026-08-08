@@ -205,63 +205,63 @@ function togglePermsPanel(role, wrapId, containerId, selectedArr) {
 // ============================================
 function ARAalert(message, type) {
     return new Promise(function (resolve) {
-        var overlay = document.getElementById('araModalOverlay');
+        var overlay = document.getElementById('shtModalOverlay');
         if (!overlay) { console.log(message); resolve(); return; }
-        var icon = document.getElementById('araModalIcon');
-        var title = document.getElementById('araModalTitle');
-        var msg = document.getElementById('araModalMessage');
-        var btns = document.getElementById('araModalButtons');
+        var icon = document.getElementById('shtModalIcon');
+        var title = document.getElementById('shtModalTitle');
+        var msg = document.getElementById('shtModalMessage');
+        var btns = document.getElementById('shtModalButtons');
         var types = { info: ['info', 'bi-info-circle'], warning: ['warning', 'bi-exclamation-triangle'], error: ['error', 'bi-x-circle'], success: ['success', 'bi-check-circle'] };
         var t = types[type] || types.info;
-        icon.className = 'ara-modal-icon ' + t[0];
+        icon.className = 'sht-modal-icon ' + t[0];
         icon.innerHTML = '<i class="bi ' + t[1] + '"></i>';
         title.textContent = type === 'error' ? 'خطأ' : type === 'success' ? 'تم بنجاح' : type === 'warning' ? 'تنبيه' : 'معلومات';
         msg.textContent = message;
-        btns.innerHTML = '<button class="btn btn-ok" id="araModalOk">حسناً</button>';
+        btns.innerHTML = '<button class="btn btn-ok" id="shtModalOk">حسناً</button>';
         overlay.classList.add('show');
-        document.getElementById('araModalOk').onclick = function () { overlay.classList.remove('show'); resolve(); };
+        document.getElementById('shtModalOk').onclick = function () { overlay.classList.remove('show'); resolve(); };
         overlay.onclick = function (e) { if (e.target === overlay) { overlay.classList.remove('show'); resolve(); } };
     });
 }
 
 function ARAconfirm(message) {
     return new Promise(function (resolve) {
-        var overlay = document.getElementById('araModalOverlay');
+        var overlay = document.getElementById('shtModalOverlay');
         if (!overlay) { console.error('ARAconfirm: لم يتم العثور على النافذة المخصصة'); resolve(false); return; }
-        var icon = document.getElementById('araModalIcon');
-        var title = document.getElementById('araModalTitle');
-        var msg = document.getElementById('araModalMessage');
-        var btns = document.getElementById('araModalButtons');
-        icon.className = 'ara-modal-icon question';
+        var icon = document.getElementById('shtModalIcon');
+        var title = document.getElementById('shtModalTitle');
+        var msg = document.getElementById('shtModalMessage');
+        var btns = document.getElementById('shtModalButtons');
+        icon.className = 'sht-modal-icon question';
         icon.innerHTML = '<i class="bi bi-question-circle"></i>';
         title.textContent = 'تأكيد';
         msg.textContent = message;
-        btns.innerHTML = '<button class="btn btn-cancel" id="araModalCancel">إلغاء</button><button class="btn btn-ok" id="araModalConfirm">تأكيد</button>';
+        btns.innerHTML = '<button class="btn btn-cancel" id="shtModalCancel">إلغاء</button><button class="btn btn-ok" id="shtModalConfirm">تأكيد</button>';
         overlay.classList.add('show');
-        document.getElementById('araModalConfirm').onclick = function () { overlay.classList.remove('show'); resolve(true); };
-        document.getElementById('araModalCancel').onclick = function () { overlay.classList.remove('show'); resolve(false); };
+        document.getElementById('shtModalConfirm').onclick = function () { overlay.classList.remove('show'); resolve(true); };
+        document.getElementById('shtModalCancel').onclick = function () { overlay.classList.remove('show'); resolve(false); };
         overlay.onclick = function (e) { if (e.target === overlay) { overlay.classList.remove('show'); resolve(false); } };
     });
 }
 
 function ARAprompt(title, placeholder, initial) {
     return new Promise(function (resolve) {
-        var overlay = document.getElementById('araModalOverlay');
-        var inputWrap = document.getElementById('araModalInputWrap');
-        var input = document.getElementById('araModalInput');
-        var icon = document.getElementById('araModalIcon');
-        var titleEl = document.getElementById('araModalTitle');
-        var msgEl = document.getElementById('araModalMessage');
-        var btns = document.getElementById('araModalButtons');
+        var overlay = document.getElementById('shtModalOverlay');
+        var inputWrap = document.getElementById('shtModalInputWrap');
+        var input = document.getElementById('shtModalInput');
+        var icon = document.getElementById('shtModalIcon');
+        var titleEl = document.getElementById('shtModalTitle');
+        var msgEl = document.getElementById('shtModalMessage');
+        var btns = document.getElementById('shtModalButtons');
         if (!overlay || !inputWrap || !input) { console.error('ARAprompt: لم يتم العثور على النافذة المخصصة'); resolve(null); return; }
-        icon.className = 'ara-modal-icon warning';
+        icon.className = 'sht-modal-icon warning';
         icon.innerHTML = '<i class="bi bi-chat-left-text"></i>';
         titleEl.textContent = title;
         msgEl.textContent = '';
         inputWrap.classList.remove('d-none');
         input.value = (initial !== undefined && initial !== null) ? String(initial) : '';
         input.placeholder = placeholder || '';
-        btns.innerHTML = '<button class="btn btn-cancel" id="araModalPromptCancel">إلغاء</button><button class="btn btn-ok" id="araModalPromptOk">موافق</button>';
+        btns.innerHTML = '<button class="btn btn-cancel" id="shtModalPromptCancel">إلغاء</button><button class="btn btn-ok" id="shtModalPromptOk">موافق</button>';
         overlay.classList.add('show');
         input.focus();
         function done(val) {
@@ -270,8 +270,8 @@ function ARAprompt(title, placeholder, initial) {
             input.value = '';
             resolve(val);
         }
-        document.getElementById('araModalPromptOk').onclick = function () { done(input.value); };
-        document.getElementById('araModalPromptCancel').onclick = function () { done(null); };
+        document.getElementById('shtModalPromptOk').onclick = function () { done(input.value); };
+        document.getElementById('shtModalPromptCancel').onclick = function () { done(null); };
         overlay.onclick = function (e) { if (e.target === overlay) { done(null); } };
         input.onkeydown = function (e) { if (e.key === 'Enter') { done(input.value); } };
     });
@@ -1269,7 +1269,7 @@ function isSelfTouched(id) {
 }
 
 function isAdminEditing() {
-    const araOverlay = document.getElementById('araModalOverlay');
+    const araOverlay = document.getElementById('shtModalOverlay');
     if (araOverlay && araOverlay.classList.contains('show')) return true;
     if (document.querySelector('.modal.show')) return true;
     const ae = document.activeElement;

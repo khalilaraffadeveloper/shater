@@ -9,10 +9,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --k-blue: #0B1849;
-            --k-blue-light: #1A2D6D;
-            --k-gold: #D4A843;
-            --k-gold-light: #E8C76A;
+            --k-blue: #003366;
+            --k-blue-light: #1A4A7A;
+            --k-gold: #FF6A00;
+            --k-gold-light: #FFB380;
             --k-purple: #6A1B9A;
             --k-purple-light: #9C27B0;
             --k-red: #C62828;
@@ -127,7 +127,7 @@
         .btn-login:hover {
             background: var(--k-blue-light);
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(11,24,73,0.4);
+            box-shadow: 0 6px 20px rgba(0,51,102,0.4);
             color: var(--k-gold-light);
         }
 
@@ -203,57 +203,57 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/compressorjs/1.2.1/compressor.min.js"></script>
     <!-- CUSTOM MODAL -->
-    <div class="ara-modal-overlay" id="araModalOverlay">
-        <div class="ara-modal" id="araModal">
-            <div class="ara-modal-icon" id="araModalIcon"><i class="bi bi-question-circle"></i></div>
-            <h5 id="araModalTitle">تأكيد</h5>
-            <p id="araModalMessage">هل أنت متأكد؟</p>
-            <div class="btn-group" id="araModalButtons">
-                <button class="btn btn-cancel" id="araModalCancel">إلغاء</button>
-                <button class="btn btn-ok" id="araModalConfirm">تأكيد</button>
+    <div class="sht-modal-overlay" id="shtModalOverlay">
+        <div class="sht-modal" id="shtModal">
+            <div class="sht-modal-icon" id="shtModalIcon"><i class="bi bi-question-circle"></i></div>
+            <h5 id="shtModalTitle">تأكيد</h5>
+            <p id="shtModalMessage">هل أنت متأكد؟</p>
+            <div class="btn-group" id="shtModalButtons">
+                <button class="btn btn-cancel" id="shtModalCancel">إلغاء</button>
+                <button class="btn btn-ok" id="shtModalConfirm">تأكيد</button>
             </div>
         </div>
     </div>
     <style>
-        .ara-modal-overlay {
+        .sht-modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
             z-index: 99999; display: none;
             align-items: center; justify-content: center;
-            animation: araFadeIn 0.2s ease;
+            animation: shtFadeIn 0.2s ease;
         }
-        .ara-modal-overlay.show { display: flex; }
-        .ara-modal {
+        .sht-modal-overlay.show { display: flex; }
+        .sht-modal {
             background: white; border-radius: 16px; padding: 32px 28px 24px;
             max-width: 420px; width: 90%; text-align: center;
             box-shadow: 0 20px 60px rgba(0,0,0,0.25);
-            animation: araScaleIn 0.25s ease;
+            animation: shtScaleIn 0.25s ease;
             direction: rtl;
         }
-        .ara-modal-icon {
+        .sht-modal-icon {
             width: 64px; height: 64px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             margin: 0 auto 16px; font-size: 28px;
         }
-        .ara-modal-icon.info { background: #e8f0fe; color: #0B1849; }
-        .ara-modal-icon.warning { background: #fff3cd; color: #856404; }
-        .ara-modal-icon.error { background: #fde8e8; color: #dc3545; }
-        .ara-modal-icon.success { background: #d4edda; color: #155724; }
-        .ara-modal-icon.question { background: #e8f0fe; color: #0B1849; }
-        .ara-modal h5 { font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #1a1a2e; }
-        .ara-modal p { font-size: 14px; color: #666; margin-bottom: 24px; line-height: 1.6; }
-        .ara-modal .btn-group { display: flex; gap: 10px; }
-        .ara-modal .btn-group .btn { flex: 1; border-radius: 10px; font-weight: 600; padding: 10px; font-size: 14px; }
-        .ara-modal .btn-ok { background: #0B1849; color: white; border: none; }
-        .ara-modal .btn-ok:hover { background: #1a2a6e; }
-        .ara-modal .btn-cancel { background: #f0f0f0; color: #666; border: none; }
-        .ara-modal .btn-cancel:hover { background: #e0e0e0; }
-        .ara-modal .btn-danger { background: #dc3545; color: white; border: none; }
-        .ara-modal .btn-danger:hover { background: #c82333; }
-        @keyframes araFadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes araScaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .sht-modal-icon.info { background: #e8f0fe; color: #003366; }
+        .sht-modal-icon.warning { background: #fff3cd; color: #856404; }
+        .sht-modal-icon.error { background: #fde8e8; color: #dc3545; }
+        .sht-modal-icon.success { background: #d4edda; color: #155724; }
+        .sht-modal-icon.question { background: #e8f0fe; color: #003366; }
+        .sht-modal h5 { font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #1a1a2e; }
+        .sht-modal p { font-size: 14px; color: #666; margin-bottom: 24px; line-height: 1.6; }
+        .sht-modal .btn-group { display: flex; gap: 10px; }
+        .sht-modal .btn-group .btn { flex: 1; border-radius: 10px; font-weight: 600; padding: 10px; font-size: 14px; }
+        .sht-modal .btn-ok { background: #003366; color: white; border: none; }
+        .sht-modal .btn-ok:hover { background: #1A4A7A; }
+        .sht-modal .btn-cancel { background: #f0f0f0; color: #666; border: none; }
+        .sht-modal .btn-cancel:hover { background: #e0e0e0; }
+        .sht-modal .btn-danger { background: #dc3545; color: white; border: none; }
+        .sht-modal .btn-danger:hover { background: #c82333; }
+        @keyframes shtFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes shtScaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     </style>
-    <script src="js/login.js?v=20260808"></script>
+    <script src="js/login.js?v=20260809"></script>
 </body>
 </html>
 
