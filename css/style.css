@@ -1,16 +1,16 @@
 ﻿/* ============================================
    SHATER DASHBOARD - Bootstrap Custom CSS
-   Colors: Slate #0F172A, Cyan #22D3EE, Violet #7C3AED
+   Colors: Navy #003366, Orange #FF6A00, Turquoise #00CED1
    ============================================ */
 
 :root {
-    --k-blue: #0F172A;
-    --k-blue-light: #1E293B;
-    --k-gold: #22D3EE;
-    --k-gold-light: #67E8F9;
-    --k-purple: #7C3AED;
-    --k-purple-light: #A78BFA;
-    --k-red: #EF4444;
+    --k-blue: #003366;
+    --k-blue-light: #1A4A7A;
+    --k-gold: #FF6A00;
+    --k-gold-light: #FFB380;
+    --k-purple: #00CED1;
+    --k-purple-light: #7CE8EA;
+    --k-red: #E53935;
 }
 
 * { font-family: 'Cairo', sans-serif !important; }
@@ -20,7 +20,7 @@
     position: fixed;
     top: 0; right: 0; bottom: 0;
     width: 260px;
-    background: var(--k-blue);
+    background: linear-gradient(180deg, #0A0A0A 0%, #003366 100%);
     z-index: 1040;
     overflow-y: auto;
     box-shadow: -4px 0 20px rgba(0,0,0,0.15);
@@ -42,7 +42,7 @@
     position: relative;
 }
 .sidebar-link:hover { background: rgba(255,255,255,0.1); color: var(--k-gold); }
-.sidebar-link.active { background: rgba(34,211,238,0.12); color: var(--k-gold); border-right: 3px solid var(--k-gold); }
+.sidebar-link.active { background: rgba(255,106,0,0.14); color: var(--k-gold); border-right: 3px solid var(--k-gold); }
 .sidebar-link i { font-size: 18px; width: 22px; text-align: center; }
 
 .nav-badge {
@@ -72,10 +72,10 @@
 }
 
 /* Offcanvas sidebar mobile */
-#sidebarOffcanvas.offcanvas-end { width: 280px; background: var(--k-blue) !important; }
+#sidebarOffcanvas.offcanvas-end { width: 280px; background: linear-gradient(180deg, #0A0A0A 0%, #003366 100%) !important; }
 .offcanvas-body .sidebar-link { color: rgba(255,255,255,0.7); }
 .offcanvas-body .sidebar-link:hover,
-.offcanvas-body .sidebar-link.active { background: rgba(34,211,238,0.12); color: var(--k-gold); }
+.offcanvas-body .sidebar-link.active { background: rgba(255,106,0,0.14); color: var(--k-gold); }
 
 /* ============ DISPATCH PANEL (Custom RTL-safe) ============ */
 .dispatch-panel {
@@ -123,14 +123,14 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    box-shadow: 0 4px 20px rgba(34,211,238,0.45);
+    box-shadow: 0 4px 20px rgba(255,106,0,0.45);
     cursor: pointer;
     transition: all 0.2s;
 }
 .dispatch-fab:hover {
     background: var(--k-gold-light);
     transform: translateY(-2px);
-    box-shadow: 0 6px 28px rgba(34,211,238,0.55);
+    box-shadow: 0 6px 28px rgba(255,106,0,0.55);
 }
 .dispatch-fab:active {
     transform: translateY(0);
@@ -274,7 +274,7 @@ body.stats-collapsed .map-wrapper { height: calc(100vh - 84px); }
 }
 .stat-item:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(34,211,238,0.35);
+    box-shadow: 0 6px 18px rgba(255,106,0,0.35);
 }
 .stat-label {
     font-size: 12px;
@@ -336,7 +336,7 @@ body.stats-collapsed .map-wrapper { height: calc(100vh - 84px); }
 .page-content .form-control:focus,
 .page-content .form-select:focus {
     border-color: var(--k-gold);
-    box-shadow: 0 0 0 0.2rem rgba(34,211,238,0.25);
+    box-shadow: 0 0 0 0.2rem rgba(255,106,0,0.25);
 }
 .page-content table th {
     font-weight: 700;
