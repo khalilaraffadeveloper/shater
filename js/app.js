@@ -381,16 +381,40 @@ let driversInfoCache = {};
 let currentPage = 'map';
 
 // ============================================
-// PRICING CONFIG
+// PRICING CONFIG  (نموذج شاطر الفاخر — وسط السوق)
+// رحلة محددة (بالكيلومتر): 50 انطلاق + 20/كم، حد أدنى 100
+// رحلة مفتوحة (بالوقت لحظياً): 4 أوقية/دقيقة، حد أدنى 100
+// الليل (بعد 00:00): +15%
 // ============================================
-const BASE_FARE = 10;   // 10 MRU base
-const PER_KM = 11;       // 11 MRU per km
-const MIN_FARE = 100;    // minimum 100 MRU
+const BASE_FARE = 50;      // انطلاق الرحلة المحددة
+const PER_KM = 20;         // أوقية لكل كيلومتر
+const MIN_FARE = 100;      // حد أدنى عام
+const OPEN_PER_MIN = 4;    // أوقية لكل دقيقة (الرحلة المفتوحة)
+const OPEN_MIN = 100;      // حد أدنى للرحلة المفتوحة
+const NIGHT_MULT = 1.15;   // +15% بعد منتصف الليل
+
+function isNightTime() {
+    const h = new Date().getHours();
+    return h === 0;
+}
+
+function applyNight(amount) {
+    return isNightTime() ? Math.round(amount * NIGHT_MULT) : amount;
+}
 
 function calculateFare(distanceKm) {
-    if (!distanceKm || distanceKm <= 0) return MIN_FARE;
-    return Math.max(MIN_FARE, Math.round(BASE_FARE + (distanceKm * PER_KM)));
+    if (!distanceKm || distanceKm <= 0) return applyNight(MIN_FARE);
+    return applyNight(Math.max(MIN_FARE, Math.round(BASE_FARE + (distanceKm * PER_KM))));
 }
+
+function calculateOpenFare(minutes) {
+    if (!minutes || minutes <= 0) return applyNight(OPEN_MIN);
+    return applyNight(Math.max(OPEN_MIN, Math.round(minutes * OPEN_PER_MIN)));
+}
+
+function roundFare5(n) { return Math.round(n / 5) * 5; }
+
+function formatRideType(t) { return t === 'open' ? 'مفتوحة (بالوقت)' : 'محددة (بالكيلومتر)'; }
 
 // ============================================
 // MAP INIT
@@ -572,13 +596,38 @@ function updateDistanceInfo() {
         const fare = calculateFare(dist);
         document.getElementById('realDistance').textContent = `${dist.toFixed(2)} كم`;
         document.getElementById('autoFare').textContent = `${fare} MRU`;
-        document.getElementById('fareInput').value = fare;
+        const fareInput = document.getElementById('fareInput');
+        if (!fareInput.dataset.manual) fareInput.value = fare;
         infoDiv.style.display = 'block';
     } else {
         infoDiv.style.display = 'none';
-        document.getElementById('fareInput').value = BASE_FARE;
     }
 }
+
+function updateRideTypeUI() {
+    const type = document.querySelector('input[name="rideType"]:checked')?.value || 'fixed';
+    const hint = document.getElementById('rideTypeHint');
+    const fareInput = document.getElementById('fareInput');
+    const distanceInfo = document.getElementById('distanceInfo');
+    if (type === 'open') {
+        if (hint) hint.textContent = 'تُحسب بالوقت لحظياً: 4 أوقية/دقيقة، حد أدنى 100. تُقدَّر لأول 15 دقيقة.';
+        if (fareInput) { fareInput.value = calculateOpenFare(15); }
+        if (distanceInfo) distanceInfo.style.display = 'none';
+    } else {
+        if (hint) hint.textContent = 'تُحسب من المسافة: 50 انطلاق + 20/كم، حد أدنى 100';
+        if (fareInput) { fareInput.value = pickupCoords && dropoffCoords ? calculateFare(haversine(pickupCoords.lat, pickupCoords.lng, dropoffCoords.lat, dropoffCoords.lng)) : 100; }
+        if (pickupCoords && dropoffCoords) updateDistanceInfo();
+        else if (distanceInfo) distanceInfo.style.display = 'none';
+    }
+}
+
+document.querySelectorAll('input[name="rideType"]').forEach(r => {
+    r.addEventListener('change', updateRideTypeUI);
+});
+
+document.getElementById('fareInput').addEventListener('input', function () {
+    this.dataset.manual = '1';
+});
 
 function updateDispatchBtn() {
     const hasAll = pickupCoords && dropoffCoords &&
@@ -875,7 +924,8 @@ document.getElementById('dispatchBtn').addEventListener('click', async () => {
     const pickupAddress = document.getElementById('pickupAddress').value.trim();
     const dropoffAddress = document.getElementById('dropoffAddress').value.trim();
     const radius = parseInt(document.getElementById('searchRadius').value);
-    const fare = parseNum(document.getElementById('fareInput').value) || BASE_FARE;
+    const rideType = document.querySelector('input[name="rideType"]:checked')?.value || 'fixed';
+    const fare = parseNum(document.getElementById('fareInput').value) || MIN_FARE;
 
     if (!passengerName || !passengerPhone) {
         showStatus('dispatchStatus', 'يرجى إدخال اسم الزبون ورقم هاتفه', 'error');
@@ -912,6 +962,8 @@ document.getElementById('dispatchBtn').addEventListener('click', async () => {
             dropoffAddress,
             realDistanceKm: Math.round(realDistance * 100) / 100,
             searchRadiusKm: radius,
+            rideType,
+            openPerMin: OPEN_PER_MIN,
             fare,
             commissionPercent,
             status: 'pending',
@@ -936,7 +988,7 @@ document.getElementById('dispatchBtn').addEventListener('click', async () => {
             });
 
             if (tokens.length > 0) {
-                sendFCMNotifications(tokens, docRef.id, passengerName, fare, pickupCoords.lat, pickupCoords.lng, pickupAddress, dropoffAddress, radius);
+                sendFCMNotifications(tokens, docRef.id, passengerName, fare, pickupCoords.lat, pickupCoords.lng, pickupAddress, dropoffAddress, radius, { rideType, openPerMin: OPEN_PER_MIN });
             }
 
             showStatus('dispatchStatus', `تم الإرسال! ${nearby.length} سائق تم تنبيههم | ${realDistance.toFixed(1)} كم | ${fare} MRU`, 'success');
@@ -2581,6 +2633,9 @@ function renderRidesList(rides) {
         const comm = r.commissionAmount || Math.round(fare * commissionPercent / 100);
         const commPct = r.commissionPercent || commissionPercent;
         const dist = r.realDistanceKm ? `${r.realDistanceKm} كم` : '-';
+        const rideTypeBadge = r.rideType === 'open'
+            ? '<span class="badge bg-info text-dark"><i class="bi bi-stopwatch me-1"></i>مفتوحة</span>'
+            : '<span class="badge bg-secondary"><i class="bi bi-sign-turn-right me-1"></i>محددة</span>';
         const driver = r.assignedDriverId ? (driversInfoCache[r.assignedDriverId] || null) : null;
         const driverName = driver ? driver.name : (r.assignedDriverId ? '...' : '-');
         const driverPhone = driver ? driver.phone : '-';
@@ -2595,7 +2650,7 @@ function renderRidesList(rides) {
             <td class="d-none d-md-table-cell"><small dir="ltr">${r.passengerPhone || '-'}</small></td>
             <td class="d-none d-md-table-cell">${r.pickupAddress || '-'}</td>
             <td class="d-none d-md-table-cell">${r.dropoffAddress || '-'}</td>
-            <td class="d-none d-lg-table-cell" style="max-width:220px;">${escapeHtmlStr(r.notes) || '<span class="text-muted">-</span>'}</td>
+            <td>${rideTypeBadge}</td>
             <td><small>${dist}</small></td>
             <td><strong>${fare}</strong> MRU</td>
             <td><strong class="text-danger">${comm}</strong> MRU <small class="text-muted">(${commPct}%)</small></td>
@@ -3010,6 +3065,8 @@ window.dispatchDeliveryToDrivers = async function (id) {
         dropoffAddress: d.dropoffAddress || d.receiverDistrict || '',
         realDistanceKm: Math.round(realDist * 100) / 100,
         searchRadiusKm: radius,
+        rideType: d.rideType || 'fixed',
+        openPerMin: OPEN_PER_MIN,
         fare: price,
         commissionPercent,
         deliveryPhase: 'at_sender',
@@ -3084,7 +3141,9 @@ window.dispatchDeliveryToDrivers = async function (id) {
                     notes: d.notes || '',
                     hasVoiceNote: d.voiceNote ? 'true' : '',
                     deliveryId: id,
-                    deliveryPhase: 'at_sender'
+                    deliveryPhase: 'at_sender',
+                    rideType: d.rideType || 'fixed',
+                    openPerMin: OPEN_PER_MIN
                 }, dropLat, dropLng);
             }
             await db.collection('delivery_requests').doc(id).update({ status: 'launched', rideId });
@@ -3230,6 +3289,8 @@ async function sendFCMNotifications(tokens, rideId, passengerName, fare, lat, ln
         dropoffLng: String(dLng || ''),
         dropoffAddress: dropoff || '',
         distanceKm: String(radius || 0),
+        rideType: extra?.rideType || 'fixed',
+        openPerMin: String(extra?.openPerMin || 4),
         fare: String(fare || 0),
         estimatedFare: String(fare || 0)
     }, extra || {});
