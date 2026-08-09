@@ -9,7 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20260809" />
+    <link rel="stylesheet" href="css/style.css?v=20260810" />
 </head>
 <body class="bg-light">
 
@@ -67,16 +67,6 @@
             </a>
             <a href="#" class="sidebar-link" data-page="promotions">
                 <i class="bi bi-megaphone-fill"></i> العروض والنشاطات
-            </a>
-            <a href="#" class="sidebar-link" data-page="products">
-                <i class="bi bi-shop"></i> المتجر والمنتجات
-                <span class="nav-badge" id="productsNavBadge"></span>
-            </a>
-            <a href="#" class="sidebar-link" data-page="stores">
-                <i class="bi bi-store"></i> المتاجر والنشاطات الذكية
-            </a>
-            <a href="#" class="sidebar-link" data-page="ladies">
-                <i class="bi bi-gem"></i> متجر شاطر للسيدات
             </a>
         </div>
         <div class="sidebar-stats px-3 pb-3">
@@ -152,16 +142,6 @@
                     </a>
                     <a href="#" class="sidebar-link" data-page="promotions" data-bs-dismiss="offcanvas">
                         <i class="bi bi-megaphone-fill"></i> العروض والنشاطات
-                    </a>
-                    <a href="#" class="sidebar-link" data-page="products" data-bs-dismiss="offcanvas">
-                        <i class="bi bi-shop"></i> المتجر والمنتجات
-                        <span class="nav-badge" id="productsNavBadgeMobile"></span>
-                    </a>
-                    <a href="#" class="sidebar-link" data-page="stores" data-bs-dismiss="offcanvas">
-                        <i class="bi bi-store"></i> المتاجر والنشاطات الذكية
-                    </a>
-                    <a href="#" class="sidebar-link" data-page="ladies" data-bs-dismiss="offcanvas">
-                        <i class="bi bi-gem"></i> متجر شاطر للسيدات
                     </a>
                 </div>
                 <div class="px-3 pb-3 mt-auto">
@@ -882,7 +862,7 @@
                                 <h6 class="fw-bold mb-0 text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>مسح جميع البيانات</h6>
                             </div>
                             <div class="card-body text-center">
-                                <p class="text-muted mb-3">سيتم حذف جميع البيانات (الرحلات، السائقين، الزبائن، الرسائل، الإعلانات، المنتجات، المتاجر، طلبات الشحن، الإشعارات). حساب المالك وجميع المشرفين يبقون كما هم، ولا يمكن مسح حساب المالك. لا يمكن التراجع عن هذا الإجراء.</p>
+                                <p class="text-muted mb-3">سيتم حذف جميع البيانات (الرحلات، السائقين، الزبائن، الرسائل، الإعلانات، طلبات الشحن، الإشعارات). حساب المالك وجميع المشرفين يبقون كما هم، ولا يمكن مسح حساب المالك. لا يمكن التراجع عن هذا الإجراء.</p>
                                 <button class="btn btn-danger fw-bold px-5" onclick="confirmResetAllData()">
                                     <i class="bi bi-trash3-fill me-2"></i>مسح الكل وبدء من الصفر
                                 </button>
@@ -1259,233 +1239,6 @@
             </div>
         </div>
 
-        <!-- PRODUCTS PAGE -->
-        <div class="page-content d-none" id="page-products">
-            <div class="container-fluid p-3 p-md-4">
-                <div class="row g-3">
-                    <div class="col-12">
-                        <div class="card shadow-sm border-0">
-                            <div class="card-header bg-white border-bottom">
-                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-plus-circle me-2 text-gold"></i>إضافة منتج جديد</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="row g-3">
-                                    <div class="col-md-4">
-                                        <label class="form-label fw-bold">اسم المنتج</label>
-                                        <input type="text" class="form-control" id="prodName" placeholder="اسم المنتج">
-                                    </div>
-                                    <div class="col-md-2 col-4">
-                                        <label class="form-label fw-bold">النوع</label>
-                                        <select class="form-select" id="prodType">
-                                            <option value="car">سيارة</option>
-                                            <option value="other">أخرى</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-2 col-4">
-                                        <label class="form-label fw-bold">السعر (MRU)</label>
-                                        <input type="number" class="form-control" id="prodPrice" placeholder="0" min="0">
-                                    </div>
-                                    <div class="col-md-4 col-4">
-                                        <label class="form-label fw-bold">الهاتف</label>
-                                        <input type="tel" class="form-control" id="prodPhone" placeholder="رقم البائع">
-                                    </div>
-                                    <div class="col-12">
-                                        <label class="form-label fw-bold">الوصف</label>
-                                        <textarea class="form-control" id="prodDescription" rows="3" placeholder="وصف المنتج..."></textarea>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-bold">صور (اختيار متعدد)</label>
-                                        <input type="file" class="form-control" id="prodImages" accept="image/*" multiple>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-bold">رابط فيديو (YouTube أو TikTok)</label>
-                                        <input type="url" class="form-control" id="prodVideo" placeholder="https://youtube.com/... أو https://tiktok.com/...">
-                                    </div>
-                                    <div class="col-12 mt-2">
-                                        <label class="form-label fw-bold small">أو أدخل روابط صور مباشرة (واحد لكل سطر)</label>
-                                        <textarea class="form-control" id="prodImageUrls" rows="2" placeholder="https://example.com/image1.jpg"></textarea>
-                                    </div>
-                                    <div id="prodImagesPreview" class="col-12 d-flex gap-2 flex-wrap"></div>
-                                </div>
-                                <button class="btn btn-dark-blue text-white fw-bold mt-3" id="btnAddProduct" onclick="addProduct()">
-                                    <i class="bi bi-check-circle me-1"></i>إضافة المنتج
-                                </button>
-                                <div class="mt-2 fw-semibold" id="addProductStatus"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-12">
-                        <div class="card shadow-sm border-0">
-                            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
-                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-list me-2 text-gold"></i>قائمة المنتجات (<span id="productCount">0</span>)</h6>
-                            </div>
-                            <div class="card-body">
-                                <div id="productsList" class="row g-3">
-                                    <div class="col-12 text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري التحميل...</div></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-12">
-                        <div class="card shadow-sm border-0">
-                            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-people me-2 text-gold"></i>منتجات الزبائن (المرفوعة من التطبيق) (<span id="customerProductCount">0</span>)</h6>
-                                <select class="form-select form-select-sm" id="customerProductFilter" style="width:auto" onchange="loadCustomerProductsList()">
-                                    <option value="all">الكل</option>
-                                    <option value="pending">بانتظار الموافقة</option>
-                                    <option value="approved">ظاهرة</option>
-                                    <option value="hidden">مخفية</option>
-                                    <option value="rejected">مرفوضة</option>
-                                </select>
-                            </div>
-                            <div class="card-body">
-                                <div id="customerProductsList" class="row g-3">
-                                    <div class="col-12 text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري التحميل...</div></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    <!-- STORES (SMART PROMOTIONS) PAGE -->
-    <div class="page-content d-none" id="page-stores">
-        <div class="container-fluid p-3 p-md-4">
-            <div class="row g-3">
-                <div class="col-12">
-                    <div class="card shadow-sm border-0">
-                        <div class="card-header bg-white border-bottom">
-                            <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-plus-circle me-2 text-gold"></i>إضافة متجر / نشاط ذكي</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="row g-3">
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold">اسم المتجر</label>
-                                    <input type="text" class="form-control" id="storeName" placeholder="اسم المتجر">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold">رقم الهاتف</label>
-                                    <input type="text" class="form-control" id="storePhone" placeholder="رقم الهاتف">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold">الحي / الموقع</label>
-                                    <input type="text" class="form-control" id="storeDistrict" placeholder="الحي / الموقع">
-                                </div>
-                                <div class="col-md-8">
-                                    <label class="form-label fw-bold">صورة المتجر</label>
-                                    <input type="file" class="form-control" id="storeImage" accept="image/*">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold">رابط صورة (اختياري)</label>
-                                    <input type="text" class="form-control" id="storeImageUrl" placeholder="https://...">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold">الحالة</label>
-                                    <div class="form-check form-switch mt-2">
-                                        <input class="form-check-input" type="checkbox" id="storeActive" checked>
-                                        <label class="form-check-label" for="storeActive">ظاهر في التطبيق</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-8">
-                                    <div id="storeImagePreview" class="d-none">
-                                        <img src="" alt="معاينة" class="img-thumbnail rounded-3" style="max-height:120px;">
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold">الموقع على الخريطة</label>
-                                    <div class="d-flex align-items-center gap-2 mt-2">
-                                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="openStoreMapPicker()"><i class="bi bi-geo-alt me-1"></i>تحديد الموقع</button>
-                                        <button type="button" class="btn btn-outline-danger btn-sm d-none" id="btnClearStoreLocation" onclick="clearStoreLocation()" title="إزالة الموقع"><i class="bi bi-x-lg"></i></button>
-                                    </div>
-                                    <div class="small text-muted mt-2" id="storeLocationText"><i class="bi bi-info-circle me-1"></i>لم يُحدد الموقع بعد — يستطيع السائق توجيه نفسه إلى المتجر</div>
-                                </div>
-                                <div class="col-12">
-                                    <button class="btn btn-primary px-4" id="btnAddStore" onclick="addStore()"><i class="bi bi-plus-lg me-2"></i>إضافة المتجر</button>
-                                    <div class="mt-2 fw-semibold" id="addStoreStatus"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12">
-                    <div class="card shadow-sm border-0">
-                        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
-                            <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-store me-2 text-gold"></i>المتاجر والنشاطات الذكية (<span id="storeCount">0</span>)</h6>
-                        </div>
-                        <div class="card-body">
-                            <div id="storesList" class="row g-3">
-                                <div class="col-12 text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري التحميل...</div></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- LADIES STORE PAGE -->
-    <div class="page-content d-none" id="page-ladies">
-        <div class="container-fluid p-3 p-md-4">
-            <div class="row g-3">
-                <div class="col-12">
-                    <div class="card shadow-sm border-0">
-                        <div class="card-header bg-white border-bottom">
-                            <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-plus-circle me-2 text-gold"></i>إضافة منتج إلى متجر شاطر للسيدات</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="row g-3">
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold">اسم المنتج</label>
-                                    <input type="text" class="form-control" id="ladiesName" placeholder="اسم المنتج">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold">السعر (MRU)</label>
-                                    <input type="number" class="form-control" id="ladiesPrice" placeholder="السعر">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold">رقم الهاتف</label>
-                                    <input type="text" class="form-control" id="ladiesPhone" placeholder="رقم الهاتف">
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label fw-bold">الوصف</label>
-                                    <textarea class="form-control" id="ladiesDescription" rows="2" placeholder="وصف المنتج"></textarea>
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label fw-bold">صور المنتج</label>
-                                    <input type="file" class="form-control" id="ladiesImages" accept="image/*" multiple>
-                                </div>
-                                <div class="col-md-8">
-                                    <label class="form-label fw-bold small">أو أدخل روابط صور مباشرة (واحد لكل سطر)</label>
-                                    <textarea class="form-control" id="ladiesImageUrls" rows="2" placeholder="https://example.com/image1.jpg"></textarea>
-                                </div>
-                                <div class="col-12">
-                                    <div id="ladiesImagesPreview" class="d-flex flex-wrap gap-2"></div>
-                                </div>
-                                <div class="col-12">
-                                    <button class="btn btn-primary px-4" id="btnAddLadiesProduct" onclick="addLadiesProduct()"><i class="bi bi-plus-lg me-2"></i>إضافة المنتج</button>
-                                    <div class="mt-2 fw-semibold" id="addLadiesStatus"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12">
-                    <div class="card shadow-sm border-0">
-                        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
-                            <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-gem me-2 text-gold"></i>منتجات متجر شاطر للسيدات (<span id="ladiesCount">0</span>)</h6>
-                        </div>
-                        <div class="card-body">
-                            <div id="ladiesList" class="row g-3">
-                                <div class="col-12 text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري التحميل...</div></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- EDIT DRIVER MODAL -->
     <div class="modal fade" id="editDriverModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -1754,75 +1507,6 @@
         </div>
     </div>
 
-    <!-- EDIT CUSTOMER PRODUCT MODAL -->
-    <div class="modal fade" id="editCustomerProductModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content rounded-4 border-0 shadow-lg">
-                <div class="modal-header border-bottom">
-                    <h6 class="fw-bold"><i class="bi bi-pencil-square me-2 text-gold"></i>تعديل منتج الزبون</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" id="editCustomerProductId">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">اسم المنتج</label>
-                        <input type="text" class="form-control" id="editCustomerProductName">
-                    </div>
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label fw-bold">السعر (MRU)</label>
-                            <input type="number" class="form-control" id="editCustomerProductPrice" min="0">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-bold">العرض الشهري (MRU)</label>
-                            <input type="number" class="form-control" id="editCustomerProductMonthly" min="0">
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">هاتف البائع</label>
-                        <input type="tel" class="form-control" id="editCustomerProductPhone">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">الوصف</label>
-                        <textarea class="form-control" id="editCustomerProductDescription" rows="3"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">عدد المشاهدات</label>
-                        <input type="text" class="form-control" id="editCustomerProductViews" readonly>
-                        <small class="text-muted">يُحسب تلقائياً من تطبيق الزبون</small>
-                    </div>
-                </div>
-                <div class="modal-footer border-top">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" class="btn btn-dark-blue text-white fw-bold" id="saveEditCustomerProductBtn">حفظ التعديلات</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- STORE LOCATION MAP MODAL -->
-    <div class="modal fade" id="storeMapModal" tabindex="-1" data-bs-backdrop="static">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content rounded-4 border-0 shadow-lg">
-                <div class="modal-header border-bottom">
-                    <h6 class="fw-bold"><i class="bi bi-geo-alt me-2 text-gold"></i>تحديد موقع المتجر على الخريطة</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="small text-muted mb-2"><i class="bi bi-hand-index-thumb me-1"></i>انقر على الخريطة لتحديد موقع المتجر</div>
-                    <div id="storeMapPicker" style="height:55vh;border-radius:12px;overflow:hidden;"></div>
-                </div>
-                <div class="modal-footer border-top d-flex justify-content-between">
-                    <div class="fw-semibold text-muted small" id="storeMapCoordsText">لم يُحدد بعد</div>
-                    <div>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                        <button type="button" class="btn btn-dark-blue text-white fw-bold" id="confirmStoreLocationBtn">تأكيد الموقع</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- EDIT ADMIN MODAL -->
     <div class="modal fade" id="editAdminModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -2086,7 +1770,7 @@
         </div>
     </div>
 
-    <script src="js/app.js?v=20260809"></script>
+    <script src="js/app.js?v=20260810"></script>
 </body>
 </html>
 
