@@ -9,7 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20260810c" />
+    <link rel="stylesheet" href="css/style.css?v=20260810d" />
 </head>
 <body class="bg-light">
 
@@ -369,7 +369,7 @@
                             <div class="card-header bg-white fw-bold"><i class="bi bi-table me-1"></i>ملخص يومي</div>
                             <div class="table-responsive" style="max-height:380px">
                                 <table class="table table-sm table-hover align-middle mb-0">
-                                    <thead><tr><th>التاريخ</th><th>الرحلات</th><th>إيراد الرحلات</th><th>العمولات</th><th>التوصيل</th><th>الشحن المقبول</th></tr></thead>
+                                    <thead><tr><th>التاريخ</th><th>الرحلات</th><th>إيراد الرحلات</th><th>العمولات</th><th>التوصيل</th><th>الاشتراكات المقبولة</th></tr></thead>
                                     <tbody id="reportDailyTable"></tbody>
                                 </table>
                             </div>
@@ -499,36 +499,6 @@
         <div class="page-content d-none" id="page-customers">
             <div class="container-fluid p-3 p-md-4">
                 <div class="row g-3">
-                    <!-- Recharge Requests -->
-                    <div class="col-12" data-perm="recharge_approve">
-                        <div class="card shadow-sm border-0">
-                            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-cash-coin me-2 text-gold"></i>طلبات الشحن والاشتراكات (<span id="rechargeRequestsCount">0</span>)</h6>
-                                <button class="btn btn-sm btn-outline-dark-blue" onclick="loadRechargeRequests()"><i class="bi bi-arrow-clockwise me-1"></i>تحديث</button>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-hover align-middle">
-                                        <thead class="table-dark-blue text-white">
-                                            <tr>
-                                                <th>الطالب</th>
-                                                <th>الهاتف</th>
-                                                <th>المبلغ والوسيلة</th>
-                                                <th>الإثبات</th>
-                                                <th>التاريخ</th>
-                                                <th>الحالة</th>
-                                                <th>إجراءات</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="rechargeRequestsTableBody">
-                                            <tr><td colspan="7" class="text-center py-3 text-muted small">جاري تحميل الطلبات...</td></tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Register New Customer -->
                     <div class="col-12" data-perm="customers_add">
                         <div class="card shadow-sm border-0">
@@ -877,7 +847,7 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="bg-light rounded-3 p-3 text-center">
-                                            <small class="text-muted">واتساب تزويد الرصيد</small>
+                                            <small class="text-muted">واتساب الدفع (اشتراك/تجديد)</small>
                                             <div class="fs-4 fw-bold text-success">26067036</div>
                                         </div>
                                     </div>
@@ -927,7 +897,7 @@
                                 <h6 class="fw-bold mb-0 text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>مسح جميع البيانات</h6>
                             </div>
                             <div class="card-body text-center">
-                                <p class="text-muted mb-3">سيتم حذف جميع البيانات (الرحلات، السائقين، الزبائن، الرسائل، الإعلانات، المنتجات، المتاجر، طلبات الشحن، الإشعارات). حساب المالك وجميع المشرفين يبقون كما هم، ولا يمكن مسح حساب المالك. لا يمكن التراجع عن هذا الإجراء.</p>
+                                <p class="text-muted mb-3">سيتم حذف جميع البيانات (الرحلات، السائقين، الزبائن، الرسائل، الإعلانات، طلبات الاشتراك، الإشعارات). حساب المالك وجميع المشرفين يبقون كما هم، ولا يمكن مسح حساب المالك. لا يمكن التراجع عن هذا الإجراء.</p>
                                 <button class="btn btn-danger fw-bold px-5" onclick="confirmResetAllData()">
                                     <i class="bi bi-trash3-fill me-2"></i>مسح الكل وبدء من الصفر
                                 </button>
@@ -1605,28 +1575,6 @@
     </div>
 
     <!-- CREDIT MODAL -->
-    <div class="modal fade" id="creditModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content rounded-4 border-0 shadow-lg">
-                <div class="modal-header border-bottom">
-                    <h6 class="fw-bold">شحن رصيد السائق</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" id="creditDriverId">
-                    <p class="mb-1">السائق: <strong id="creditDriverName"></strong></p>
-                    <p class="mb-3">الرصيد الحالي: <strong class="text-gold" id="creditDriverCurrent"></strong> MRU</p>
-                    <label class="form-label fw-bold">المبلغ (MRU)</label>
-                    <input type="number" class="form-control" id="creditAmount" placeholder="أدخل المبلغ" min="1">
-                </div>
-                <div class="modal-footer border-top">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" class="btn btn-success text-white fw-bold" id="confirmCreditBtn">شحن الرصيد</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- EDIT CREDIT MODAL -->
     <div class="modal fade" id="editCreditModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -1742,29 +1690,6 @@
                 <div class="modal-footer border-top">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
                     <button type="button" class="btn btn-dark-blue text-white fw-bold" id="saveCustomerPasswordBtn">حفظ كلمة السر</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- CUSTOMER CREDIT MODAL -->
-    <div class="modal fade" id="customerCreditModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content rounded-4 border-0 shadow-lg">
-                <div class="modal-header border-bottom">
-                    <h6 class="fw-bold">شحن رصيد الزبون</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" id="customerCreditId">
-                    <p class="mb-1">الزبون: <strong id="customerCreditName"></strong></p>
-                    <p class="mb-3">الرصيد الحالي: <strong class="text-gold" id="customerCreditCurrent"></strong> MRU</p>
-                    <label class="form-label fw-bold">المبلغ (MRU)</label>
-                    <input type="number" class="form-control" id="customerCreditAmount" placeholder="أدخل المبلغ" min="1">
-                </div>
-                <div class="modal-footer border-top">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" class="btn btn-success text-white fw-bold" id="confirmCustomerCreditBtn">شحن الرصيد</button>
                 </div>
             </div>
         </div>
@@ -2148,7 +2073,8 @@
         </div>
     </div>
 
-    <script src="js/app.js?v=20260810c"></script>
+    <script src="js/app.js?v=20260810d"></script>
 </body>
 </html>
+
 

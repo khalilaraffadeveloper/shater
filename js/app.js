@@ -79,13 +79,13 @@ const PERMISSION_KEYS = {
     drivers_edit: 'تعديل بيانات السائقين',
     drivers_delete: 'حذف سائق',
     drivers_service: 'التحكم بالخدمة عن بُعد',
-    drivers_credit: 'شحن وتعديل رصيد السائق',
+    drivers_credit: 'تعديل رصيد السائق',
     customers: 'إدارة الزبائن (عرض)',
     customers_add: 'تسجيل زبون جديد',
     customers_edit: 'تعديل بيانات الزبائن',
     customers_delete: 'حذف زبون',
-    customers_credit: 'شحن وتعديل رصيد الزبون',
-    recharge_approve: 'الموافقة على طلبات الشحن',
+    customers_credit: 'تعديل رصيد الزبون',
+    recharge_approve: 'الموافقة على طلبات الاشتراك',
     deliveries: 'طلبات التوصيل',
     rides: 'سجل الرحلات',
     unregistered: 'الزبناء غير المسجلين',
@@ -383,7 +383,6 @@ let allCustomers = [];
 let allRides = [];
 let ridesListUnsubscribe = null;
 let deliveriesUnsubscribe = null;
-let rechargeRequestsUnsubscribe = null;
 let customerSubsUnsubscribe = null;
 let driverSubsUnsubscribe = null;
 let deliverySubsUnsubscribe = null;
@@ -801,7 +800,6 @@ function navigateToPage(page) {
     currentPage = page;
     if (page === 'deliveries') { unreadDeliveries = 0; updateNavBadges(); }
     if (page === 'rides') { unreadRides = 0; updateNavBadges(); }
-    if (page === 'customers') { unreadRecharges = 0; updateNavBadges(); }
     if (page === 'drivers') { unreadDriverEvents = 0; updateNavBadges(); }
     if (page === 'customer-subscriptions') { unreadCustomerSubs = 0; updateNavBadges(); }
     if (page === 'driver-subscriptions') { unreadDriverSubs = 0; updateNavBadges(); }
@@ -810,13 +808,12 @@ function navigateToPage(page) {
     if (page === 'delivery-drivers') { unreadDeliveryDrivers = 0; updateNavBadges(); }
     if (page !== 'rides' && ridesListUnsubscribe) { ridesListUnsubscribe(); ridesListUnsubscribe = null; }
     if (page !== 'deliveries' && deliveriesUnsubscribe) { deliveriesUnsubscribe(); deliveriesUnsubscribe = null; }
-    if (page !== 'customers' && rechargeRequestsUnsubscribe) { rechargeRequestsUnsubscribe(); rechargeRequestsUnsubscribe = null; }
     if (page !== 'customer-subscriptions' && customerSubsUnsubscribe) { customerSubsUnsubscribe(); customerSubsUnsubscribe = null; }
     if (page !== 'driver-subscriptions' && driverSubsUnsubscribe) { driverSubsUnsubscribe(); driverSubsUnsubscribe = null; }
     if (page !== 'delivery-subscriptions' && deliverySubsUnsubscribe) { deliverySubsUnsubscribe(); deliverySubsUnsubscribe = null; }
     if (page === 'overview') loadOverview();
     if (page === 'drivers') loadDriversList();
-    if (page === 'customers') { loadCustomersList(); loadRechargeRequests(); }
+    if (page === 'customers') loadCustomersList();
     if (page === 'devices') loadDevices();
     if (page === 'deliveries') initDeliveriesListener();
     if (page === 'unregistered-customers') loadUnregisteredCustomers();
@@ -1243,39 +1240,12 @@ function renderDriverSearchResult(id, d) {
             </div>
             <div class="d-flex gap-1 flex-wrap mt-2">
                 ${canEdit ? `<button class="btn-action btn-action-edit" onclick="openEditModal('${id}','${safeName}','${d.phone||''}','${disabled?"disabled":"active"}')">تعديل</button>` : ''}
-                ${canCredit ? `<button class="btn-action btn-action-credit" onclick="openCreditModal('${id}','${safeName}',${d.credit||0})">شحن</button>` : ''}
                 ${canCredit ? `<button class="btn-action btn-action-edit" style="background:#fff3cd;border-color:#ffc107;color:#856404" onclick="openEditCreditModal('${id}','${safeName}',${d.credit||0})">تعديل الرصيد</button>` : ''}
                 ${canEdit ? `<button class="btn-action btn-action-toggle" onclick="toggleDriverStatus('${id}',${disabled})">${disabled ? 'تفعيل' : 'تعطيل'}</button>` : ''}
                 ${canDel ? `<button class="btn-action btn-action-delete" onclick="openDeleteModal('${id}','${safeName}')">حذف</button>` : ''}
             </div>
-            ${canCredit ? `<div class="input-group input-group-sm mt-2" style="max-width:280px">
-                <input type="text" class="form-control" id="quickCreditAmount" placeholder="المبلغ (MRU)" inputmode="numeric">
-                <button class="btn btn-success text-white fw-bold" onclick="quickAddCredit('${id}')">شحن سريع</button>
-            </div>` : ''}
         </div>`;
 }
-
-window.quickAddCredit = async function (driverId) {
-    if (!guardPerm('drivers_credit', 'ليست لديك صلاحية شحن الرصيد')) return;
-    const amount = parseNum(document.getElementById('quickCreditAmount').value);
-    if (!amount || amount <= 0) { ARAalert('أدخل مبلغ صحيح', 'warning'); return; }
-    try {
-        await db.collection('drivers').doc(driverId).update({
-            credit: firebase.firestore.FieldValue.increment(amount)
-        });
-        ARAalert(`تم شحن ${amount} MRU بنجاح`, 'success');
-        notifyUser('drivers', driverId, {
-            type: 'credit_update',
-            title: 'تم شحن رصيدك',
-            body: `تمت إضافة ${amount} MRU إلى رصيدك`,
-            amount: String(amount)
-        });
-        refreshDriverSearchResult();
-        if (currentPage === 'drivers') loadDriversList();
-    } catch (e) {
-        ARAalert('خطأ: ' + e.message, 'error');
-    }
-};
 
 window.refreshDriverSearchResult = async function () {
     if (!lastSearchedDriverId) return;
@@ -1302,7 +1272,6 @@ let activeRidesMap = {};
 // ============================================
 let unreadDeliveries = 0;
 let unreadRides = 0;
-let unreadRecharges = 0;
 let unreadDriverEvents = 0;
 let unreadCustomerSubs = 0;
 let unreadDriverSubs = 0;
@@ -1322,8 +1291,6 @@ function updateNavBadges() {
     setNavBadge('deliveriesNavBadgeMobile', unreadDeliveries);
     setNavBadge('ridesNavBadge', unreadRides);
     setNavBadge('ridesNavBadgeMobile', unreadRides);
-    setNavBadge('customersNavBadge', unreadRecharges);
-    setNavBadge('customersNavBadgeMobile', unreadRecharges);
     setNavBadge('driversNavBadge', unreadDriverEvents);
     setNavBadge('driversNavBadgeMobile', unreadDriverEvents);
     setNavBadge('customerSubsNavBadge', unreadCustomerSubs);
@@ -1470,7 +1437,7 @@ function initEventWatchers() {
             });
         }, err => { console.log('ride watcher error', err); });
 
-    // 3) طلب شحن / اشتراك جديد من سائق أو زبون
+    // 3) طلب اشتراك / تجديد جديد من زبون أو سائق أو توصيل
     db.collection('recharge_requests').where('status', '==', 'pending')
         .onSnapshot(snap => {
             if (rechargeWatchFirst) {
@@ -1482,36 +1449,23 @@ function initEventWatchers() {
                 if (ch.type !== 'added' || rechargeSeen[ch.doc.id]) return;
                 rechargeSeen[ch.doc.id] = true;
                 const r = ch.doc.data();
-                const isSubscription = r.type === 'subscription';
+                if (r.type !== 'subscription') return;
                 const roleKey = r.userRole || r.role || 'customer';
                 const who = roleKey === 'driver' ? (r.driverName || r.name || 'سائق')
                     : roleKey === 'delivery' ? (r.driverName || r.name || 'سائق توصيل')
                     : (r.customerName || r.userName || r.name || 'زبون');
-                if (isSubscription) {
-                    if (roleKey === 'customer') unreadCustomerSubs++;
-                    else if (roleKey === 'delivery') unreadDeliverySubs++;
-                    else unreadDriverSubs++;
-                    updateNavBadges();
-                    queueEventAlert({
-                        title: '⭐ طلب اشتراك جديد',
-                        body: `${who} — ${r.amount || 0} MRU (${roleKey === 'customer' ? 'اشتراك سنوي' : 'اشتراك شهري'})`,
-                        tab: '⭐',
-                        popup: `طلب اشتراك جديد!\n${who}\nالمبلغ: ${r.amount || 0} MRU`,
-                        type: 'info',
-                        log: { tag: 'sub_new', msg: `⭐ طلب اشتراك ${r.amount || 0} MRU من ${who}` }
-                    });
-                } else {
-                    unreadRecharges++;
-                    updateNavBadges();
-                    queueEventAlert({
-                        title: '💰 طلب شحن رصيد جديد',
-                        body: `${who} — ${r.amount || 0} MRU (${r.walletName || 'محفظة'})`,
-                        tab: '💰',
-                        popup: `طلب شحن رصيد!\n${who}\nالمبلغ: ${r.amount || 0} MRU\nالمحفظة: ${r.walletName || '-'}`,
-                        type: 'info',
-                        log: { tag: 'recharge_new', msg: `💰 طلب شحن ${r.amount || 0} MRU من ${who}` }
-                    });
-                }
+                if (roleKey === 'customer') unreadCustomerSubs++;
+                else if (roleKey === 'delivery') unreadDeliverySubs++;
+                else unreadDriverSubs++;
+                updateNavBadges();
+                queueEventAlert({
+                    title: '⭐ طلب اشتراك جديد',
+                    body: `${who} — ${r.amount || 0} MRU (${roleKey === 'customer' ? 'اشتراك سنوي' : 'اشتراك شهري'})`,
+                    tab: '⭐',
+                    popup: `طلب اشتراك جديد!\n${who}\nالمبلغ: ${r.amount || 0} MRU`,
+                    type: 'info',
+                    log: { tag: 'sub_new', msg: `⭐ طلب اشتراك ${r.amount || 0} MRU من ${who}` }
+                });
             });
         }, err => { console.log('recharge watcher error', err); });
 
@@ -1729,7 +1683,6 @@ function buildDriverRow(d) {
         <td>
             <div class="d-flex gap-1 flex-wrap">
                 ${canEdit ? `<button class="btn-action btn-action-edit" onclick="openEditModal('${d.id}','${safeName}','${d.phone||''}','${d.disabled?"disabled":"active"}')">تعديل</button>` : ''}
-                ${canCredit ? `<button class="btn-action btn-action-credit" onclick="openCreditModal('${d.id}','${safeName}',${d.credit||0})">شحن</button>` : ''}
                 ${canCredit ? `<button class="btn-action btn-action-edit" style="background:#fff3cd;border-color:#ffc107;color:#856404" onclick="openEditCreditModal('${d.id}','${safeName}',${d.credit||0})">تعديل الرصيد</button>` : ''}
                 ${canEdit ? `<button class="btn-action btn-action-toggle" onclick="toggleDriverStatus('${d.id}',${d.disabled||false})">${d.disabled ? 'تفعيل' : 'تعطيل'}</button>` : ''}
                 ${canService && !d.disabled ? `<button class="btn-action ${d.isOnline ? 'btn-action-delete' : 'btn-action-on'}" onclick="toggleDriverService('${d.id}','${safeName}',${!d.isOnline})">${d.isOnline ? 'إيقاف الخدمة' : 'تشغيل الخدمة'}</button>` : ''}
@@ -2047,7 +2000,6 @@ function renderCustomersList(customers) {
             <td>
                 <div class="d-flex gap-1 flex-wrap">
                     ${canEditC ? `<button class="btn-action btn-action-edit" onclick="openEditCustomerModal('${c.id}','${safeName}','${c.phone||''}','${c.whatsapp||''}')">تعديل</button>` : ''}
-                    ${canCreditC ? `<button class="btn-action btn-action-credit" onclick="openCustomerCreditModal('${c.id}','${safeName}',${c.credit||0})">شحن</button>` : ''}
                     ${canCreditC ? `<button class="btn-action btn-action-edit" style="background:#fff3cd;border-color:#ffc107;color:#856404" onclick="openEditCustomerCreditModal('${c.id}','${safeName}',${c.credit||0})">تعديل الرصيد</button>` : ''}
                     ${canDelC ? `<button class="btn-action btn-action-delete" onclick="openDeleteCustomerModal('${c.id}','${safeName}')">حذف</button>` : ''}
                 </div>
@@ -2285,7 +2237,6 @@ document.getElementById('registerCustomerBtn').addEventListener('click', async (
 // BOOTSTRAP MODALS
 // ============================================
 const editModal = new bootstrap.Modal(document.getElementById('editDriverModal'));
-const creditModal = new bootstrap.Modal(document.getElementById('creditModal'));
 const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
 const passwordModal = new bootstrap.Modal(document.getElementById('passwordModal'));
 const editCreditModal = new bootstrap.Modal(document.getElementById('editCreditModal'));
@@ -2293,7 +2244,6 @@ const serviceConfirmModal = new bootstrap.Modal(document.getElementById('service
 
 // Customer modals
 const editCustomerModal = new bootstrap.Modal(document.getElementById('editCustomerModal'));
-const customerCreditModal = new bootstrap.Modal(document.getElementById('customerCreditModal'));
 const deleteCustomerModal = new bootstrap.Modal(document.getElementById('deleteCustomerModal'));
 const customerPasswordModal = new bootstrap.Modal(document.getElementById('customerPasswordModal'));
 const editCustomerCreditModal = new bootstrap.Modal(document.getElementById('editCustomerCreditModal'));
@@ -2378,37 +2328,6 @@ document.getElementById('saveEditBtn').addEventListener('click', async () => {
         loadDriversList();
         refreshDriverSearchResult();
     } catch (err) { console.error('Edit error:', err); }
-});
-
-window.openCreditModal = function(id, name, current) {
-    document.getElementById('creditDriverId').value = id;
-    document.getElementById('creditDriverName').textContent = name;
-    document.getElementById('creditDriverCurrent').textContent = current;
-    document.getElementById('creditAmount').value = '';
-    creditModal.show();
-};
-
-document.getElementById('confirmCreditBtn').addEventListener('click', async () => {
-    if (!requireDb()) return;
-    if (!guardPerm('drivers_credit', 'ليست لديك صلاحية شحن الرصيد')) return;
-    const id = document.getElementById('creditDriverId').value;
-    const amount = parseNum(document.getElementById('creditAmount').value);
-    if (!amount || amount <= 0) return;
-    try {
-        const before = await db.collection('drivers').doc(id).get();
-        const prev = (before.data() && before.data().credit) || 0;
-        await db.collection('drivers').doc(id).update({ credit: firebase.firestore.FieldValue.increment(amount) });
-        creditModal.hide();
-        loadDriversList();
-        refreshDriverSearchResult();
-        notifyUser('drivers', id, {
-            type: 'credit_update',
-            title: 'تم شحن رصيدك',
-            body: `تمت إضافة ${amount} MRU إلى رصيدك`,
-            amount: String(amount),
-            balance: String((prev + amount).toFixed(2))
-        });
-    } catch (err) { console.error('Credit error:', err); }
 });
 
 window.toggleDriverStatus = async function(id, currentlyDisabled) {
@@ -2511,36 +2430,6 @@ document.getElementById('saveEditCustomerBtn').addEventListener('click', async (
     } catch (err) { console.error('Edit customer error:', err); }
 });
 
-window.openCustomerCreditModal = function(id, name, current) {
-    document.getElementById('customerCreditId').value = id;
-    document.getElementById('customerCreditName').textContent = name;
-    document.getElementById('customerCreditCurrent').textContent = current;
-    document.getElementById('customerCreditAmount').value = '';
-    customerCreditModal.show();
-};
-
-document.getElementById('confirmCustomerCreditBtn').addEventListener('click', async () => {
-    if (!requireDb()) return;
-    if (!guardPerm('customers_credit', 'ليست لديك صلاحية شحن رصيد الزبون')) return;
-    const id = document.getElementById('customerCreditId').value;
-    const amount = parseFloat(document.getElementById('customerCreditAmount').value);
-    if (!amount || amount <= 0) return;
-    try {
-        const before = await db.collection('customers').doc(id).get();
-        const prev = (before.data() && before.data().credit) || 0;
-        await db.collection('customers').doc(id).update({ credit: firebase.firestore.FieldValue.increment(amount) });
-        customerCreditModal.hide();
-        loadCustomersList();
-        notifyUser('customers', id, {
-            type: 'credit_update',
-            title: 'تم شحن رصيدك',
-            body: `تمت إضافة ${amount} MRU إلى رصيدك`,
-            amount: String(amount),
-            balance: String((prev + amount).toFixed(2))
-        });
-    } catch (err) { console.error('Customer credit error:', err); }
-});
-
 window.openDeleteCustomerModal = function(id, name) {
     document.getElementById('deleteCustomerId').value = id;
     document.getElementById('deleteCustomerName').textContent = name;
@@ -2557,91 +2446,6 @@ document.getElementById('confirmDeleteCustomerBtn').addEventListener('click', as
         loadCustomersList();
     } catch (err) { console.error('Delete customer error:', err); }
 });
-
-// ============================================
-// RECHARGE REQUESTS
-// ============================================
-
-async function loadRechargeRequests() {
-    if (!requireDb()) return;
-    if (rechargeRequestsUnsubscribe) { rechargeRequestsUnsubscribe(); rechargeRequestsUnsubscribe = null; }
-    const tbody = document.getElementById('rechargeRequestsTableBody');
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل الطلبات...</div></td></tr>';
-    try {
-        rechargeRequestsUnsubscribe = db.collection('recharge_requests')
-            .orderBy('createdAt', 'desc').limit(100)
-            .onSnapshot(async snapshot => {
-                const labels = { pending: 'قيد الانتظار', approved: 'مقبول', rejected: 'مرفوض' };
-                const badgeCls = { pending: 'badge bg-warning text-dark', approved: 'badge bg-success', rejected: 'badge bg-danger' };
-                const roleLabels = { customer: 'زبون', driver: 'سائق', delivery: 'توصيل' };
-                const roleCls = { customer: 'bg-secondary', driver: 'bg-info', delivery: 'bg-warning' };
-                let count = 0;
-                const docs = [];
-                snapshot.forEach(d => {
-                    const r = d.data();
-                    if (r.status === 'pending') count++;
-                    docs.push({ id: d.id, r });
-                });
-                document.getElementById('rechargeRequestsCount').textContent = count;
-                if (docs.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">لا توجد طلبات شحن أو اشتراكات</td></tr>';
-                    return;
-                }
-                // Resolve user names for subscription requests (async, chunked by 10).
-                const nameMap = await resolveRechargeNames(docs);
-                tbody.innerHTML = docs.map(({ id, r }) => {
-                    const time = r.createdAt && r.createdAt.toDate
-                        ? r.createdAt.toDate().toLocaleString('ar-MA')
-                        : '-';
-                    const isSubscription = r.type === 'subscription';
-                    const roleKey = r.userRole || r.role || 'customer';
-                    const isDriver = roleKey === 'driver' || roleKey === 'delivery';
-                    const name = r.userName || r.name || (isDriver ? r.driverName : r.customerName) || nameMap[r.userId] || '—';
-                    const phone = r.phone || (isDriver ? r.driverPhone : r.customerPhone) || '-';
-                    const safeName = String(name).replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                    const typeBadge = isSubscription
-                        ? '<span class="badge bg-primary text-white"><i class="bi bi-stars me-1"></i> اشتراك</span>'
-                        : '<span class="badge bg-light text-dark border">شحن رصيد</span>';
-                    const roleBadge = isSubscription
-                        ? `<span class="badge ${roleCls[roleKey] || 'bg-secondary'} text-white">${roleLabels[roleKey] || roleKey}</span>`
-                        : (isDriver
-                            ? '<span class="badge bg-info text-white">سائق</span>'
-                            : '<span class="badge bg-secondary text-white">زبون</span>');
-                    const subPlan = isSubscription ? (roleKey === 'customer' ? 'سنة' : 'شهر') : '';
-                    const proof = r.screenshotBase64
-                        ? `<img src="data:image/jpeg;base64,${r.screenshotBase64}" class="recharge-thumb" onclick="openImageModal(this)" title="عرض لقطة الشاشة">`
-                        : (r.proofImageUrl
-                            ? `<img src="${r.proofImageUrl}" class="recharge-thumb" onclick="openImageModal(this)" title="عرض إثبات الدفع">`
-                            : `<span class="text-muted small">${r.transactionRef || 'لا يوجد'}</span>`);
-                    const method = isSubscription
-                        ? `<strong>${r.amount || 0}</strong> MRU<br><small class="text-muted">${r.paymentMethod || '—'}${subPlan ? ' • ' + subPlan : ''}</small>`
-                        : `<strong>${r.amount || 0}</strong> MRU<br><small class="text-muted">${r.walletName || '—'}</small>`;
-                    let actions = '';
-                    if (r.status === 'pending') {
-                        actions = `<button class="btn-action btn-action-edit" onclick="approveRechargeRequest('${id}')">${isSubscription ? 'تفعيل' : 'قبول'}</button>
-                                   <button class="btn-action btn-action-delete" onclick="rejectRechargeRequest('${id}')">رفض</button>`;
-                    } else {
-                        actions = '<span class="text-muted small">تمت المعالجة</span>';
-                    }
-                    return `<tr>
-                        <td><strong>${safeName}</strong><br>${typeBadge} ${roleBadge}</td>
-                        <td><span dir="ltr">${phone}</span>${isSubscription && r.transactionRef ? `<br><small class="text-muted" dir="ltr">مرجع: ${r.transactionRef}</small>` : ''}</td>
-                        <td>${method}</td>
-                        <td>${proof}</td>
-                        <td class="small text-muted">${time}</td>
-                        <td><span class="${badgeCls[r.status] || 'badge bg-secondary'}">${labels[r.status] || r.status}</span></td>
-                        <td><div class="d-flex gap-1 flex-wrap">${actions}</div></td>
-                    </tr>`;
-                }).join('');
-            }, err => {
-                console.error('Recharge requests listener error:', err);
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">خطأ في تحميل الطلبات</td></tr>';
-            });
-    } catch (err) {
-        console.error('Load recharge requests error:', err);
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">خطأ في تحميل الطلبات</td></tr>';
-    }
-}
 
 async function resolveRechargeNames(docs) {
     const nameMap = {};
@@ -2684,7 +2488,7 @@ window.approveRechargeRequest = async function(requestId) {
     } catch (e) { ARAalert('خطأ: ' + e.message, 'error'); return; }
     if (!reqDoc.exists) { ARAalert('الطلب غير موجود', 'error'); return; }
     const r = reqDoc.data() || {};
-    const isSubscription = r.type === 'subscription';
+    if (r.type !== 'subscription') { ARAalert('هذا الطلب ليس اشتراكاً', 'warning'); return; }
     const roleKey = r.userRole || r.role || 'customer';
     const isDriver = roleKey === 'driver' || roleKey === 'delivery';
     const targetColl = isDriver ? 'drivers' : 'customers';
@@ -2692,50 +2496,35 @@ window.approveRechargeRequest = async function(requestId) {
     const amount = r.amount || 0;
     if (!targetId) { ARAalert('بيانات الطلب ناقصة', 'warning'); return; }
 
-    // ---- Subscription: activate plan (yearly for customers, monthly for drivers/delivery) ----
-    if (isSubscription) {
-        const label = roleKey === 'customer' ? 'الزبون' : (roleKey === 'delivery' ? 'سائق التوصيل' : 'السائق');
-        const isYearly = roleKey === 'customer';
-        const months = isYearly ? 12 : 1;
-        const planLabel = isYearly ? 'اشتراك سنوي (12 شهر)' : 'اشتراك شهري (شهر واحد)';
-        const now = new Date();
-        const expires = new Date(now);
-        expires.setMonth(expires.getMonth() + months);
-        const expLabel = expires.toLocaleDateString('ar-MA');
-        if (!(await ARAconfirm(`سيتم تفعيل الاشتراك (${planLabel} — ${amount} MRU) لـ ${label} حتى ${expLabel}. تأكيد؟`))) return;
-        try {
-            await db.collection(targetColl).doc(targetId).update({
-                'subscription.active': true,
-                'subscription.type': isYearly ? 'yearly' : 'monthly',
-                'subscription.period': isYearly ? 'year' : 'month',
-                'subscription.amount': amount,
-                'subscription.activatedAt': firebase.firestore.FieldValue.serverTimestamp(),
-                'subscription.lastPaidAt': firebase.firestore.FieldValue.serverTimestamp(),
-                'subscription.expiresAt': expires,
-                status: 'active'
-            });
-            await db.collection('recharge_requests').doc(requestId).update({
-                status: 'approved',
-                processedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                processedBy: (firebase.auth().currentUser && firebase.auth().currentUser.email) || 'admin'
-            });
-            if (isDriver) loadDriversList(); else loadCustomersList();
-            await notifyUser(targetColl, targetId, {
-                type: 'subscription_approved',
-                title: 'تم تفعيل اشتراكك',
-                body: `تم تفعيل اشتراكك (${planLabel}) بنجاح حتى ${expLabel}`,
-                amount: String(amount)
-            });
-            ARAalert('تم تفعيل الاشتراك', 'success');
-        } catch (err) { console.error('Approve subscription error:', err); ARAalert('خطأ: ' + err.message, 'error'); }
-        return;
-    }
-
-    // ---- Non-subscription: classic credit recharge ----
-    if (!amount || amount <= 0) { ARAalert('بيانات الطلب ناقصة', 'warning'); return; }
-    if (!(await ARAconfirm(`سيتم إضافة ${amount} MRU إلى رصيد ${isDriver ? 'السائق' : 'الزبون'}. تأكيد؟`))) return;
+    // ---- Activate / renew subscription (yearly for customers, monthly for drivers/delivery) ----
+    const label = roleKey === 'customer' ? 'الزبون' : (roleKey === 'delivery' ? 'سائق التوصيل' : 'السائق');
+    const isYearly = roleKey === 'customer';
+    const months = isYearly ? 12 : 1;
+    const planLabel = isYearly ? 'اشتراك سنوي (12 شهر)' : 'اشتراك شهري (شهر واحد)';
+    const now = new Date();
+    let base = now;
     try {
-        await db.collection(targetColl).doc(targetId).update({ credit: firebase.firestore.FieldValue.increment(amount) });
+        const targetDoc = await db.collection(targetColl).doc(targetId).get();
+        const cur = targetDoc.exists ? (targetDoc.data() || {}).subscription : null;
+        const curExp = cur && cur.expiresAt && cur.expiresAt.toDate ? cur.expiresAt.toDate() : null;
+        if (cur && cur.active === true && curExp && curExp > now) base = curExp;
+    } catch (e) { console.error('Read subscription base error:', e); }
+    const expires = new Date(base);
+    expires.setMonth(expires.getMonth() + months);
+    const expLabel = expires.toLocaleDateString('ar-MA');
+    const isRenewal = base > now;
+    if (!(await ARAconfirm(`${isRenewal ? 'سيتم تجديد' : 'سيتم تفعيل'} الاشتراك (${planLabel} — ${amount} MRU) لـ ${label} حتى ${expLabel}. تأكيد؟`))) return;
+    try {
+        await db.collection(targetColl).doc(targetId).update({
+            'subscription.active': true,
+            'subscription.type': isYearly ? 'yearly' : 'monthly',
+            'subscription.period': isYearly ? 'year' : 'month',
+            'subscription.amount': amount,
+            'subscription.activatedAt': firebase.firestore.FieldValue.serverTimestamp(),
+            'subscription.lastPaidAt': firebase.firestore.FieldValue.serverTimestamp(),
+            'subscription.expiresAt': expires,
+            status: 'active'
+        });
         await db.collection('recharge_requests').doc(requestId).update({
             status: 'approved',
             processedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -2743,26 +2532,26 @@ window.approveRechargeRequest = async function(requestId) {
         });
         if (isDriver) loadDriversList(); else loadCustomersList();
         await notifyUser(targetColl, targetId, {
-            type: 'credit_update',
-            title: 'تم شحن رصيدك',
-            body: `تم قبول طلب الشحن وإضافة ${amount} MRU إلى رصيدك`,
+            type: 'subscription_approved',
+            title: isRenewal ? 'تم تجديد اشتراكك' : 'تم تفعيل اشتراكك',
+            body: `${isRenewal ? 'تم تجديد' : 'تم تفعيل'} اشتراكك (${planLabel}) بنجاح حتى ${expLabel}`,
             amount: String(amount)
         });
-        ARAalert('تم قبول الطلب وشحن الرصيد', 'success');
-    } catch (err) { console.error('Approve recharge error:', err); ARAalert('خطأ: ' + err.message, 'error'); }
+        ARAalert(isRenewal ? 'تم تجديد الاشتراك' : 'تم تفعيل الاشتراك', 'success');
+    } catch (err) { console.error('Approve subscription error:', err); ARAalert('خطأ: ' + err.message, 'error'); }
 };
 
 window.rejectRechargeRequest = async function(requestId) {
     if (!requireDb()) return;
-    if (!guardPerm('recharge_approve', 'ليست لديك صلاحية رفض طلبات الشحن')) return;
+    if (!guardPerm('recharge_approve', 'ليست لديك صلاحية رفض طلبات الاشتراك')) return;
     const reason = await ARAprompt('سبب الرفض', 'أدخل سبب الرفض (سيصل للزبون/السائق)');
     if (reason === null || reason.trim() === '') { ARAalert('تم إلغاء الرفض: لم يُدخل سبب', 'warning'); return; }
-    if (!(await ARAconfirm('سيتم رفض طلب الشحن وإرسال السبب للزبون. تأكيد؟'))) return;
+    if (!(await ARAconfirm('سيتم رفض طلب الاشتراك وإرسال السبب للزبون. تأكيد؟'))) return;
     try {
         const reqDoc = await db.collection('recharge_requests').doc(requestId).get();
         if (!reqDoc.exists) { ARAalert('الطلب غير موجود', 'error'); return; }
         const reqData = reqDoc.data() || {};
-        const isSubReq = reqData.type === 'subscription';
+        if (reqData.type !== 'subscription') { ARAalert('هذا الطلب ليس اشتراكاً', 'warning'); return; }
         const roleKey = reqData.userRole || reqData.role || 'customer';
         const isDriver = roleKey === 'driver' || roleKey === 'delivery';
         const targetId = reqData.userId || (isDriver ? reqData.driverId : reqData.customerId);
@@ -2774,27 +2563,17 @@ window.rejectRechargeRequest = async function(requestId) {
             processedBy: (firebase.auth().currentUser && firebase.auth().currentUser.email) || 'admin'
         });
         if (targetId) {
-            if (isSubReq) {
-                await notifyUser(isDriver ? 'drivers' : 'customers', targetId, {
-                    type: 'subscription_rejected',
-                    title: 'تم رفض طلب اشتراكك',
-                    body: `تم رفض طلب اشتراكك (${amount} MRU). السبب: ${reason}`,
-                    amount: String(amount),
-                    rejectionReason: reason
-                });
-            } else {
-                await notifyUser(isDriver ? 'drivers' : 'customers', targetId, {
-                    type: 'recharge_rejected',
-                    title: 'تم رفض طلب الشحن',
-                    body: `تم رفض طلب شحن ${amount} MRU. السبب: ${reason}`,
-                    amount: String(amount),
-                    rejectionReason: reason
-                });
-            }
+            await notifyUser(isDriver ? 'drivers' : 'customers', targetId, {
+                type: 'subscription_rejected',
+                title: 'تم رفض طلب اشتراكك',
+                body: `تم رفض طلب اشتراكك (${amount} MRU). السبب: ${reason}`,
+                amount: String(amount),
+                rejectionReason: reason
+            });
         }
         if (isDriver) loadDriversList(); else loadCustomersList();
         ARAalert('تم رفض الطلب وإرسال السبب', 'info');
-    } catch (err) { console.error('Reject recharge error:', err); ARAalert('خطأ: ' + err.message, 'error'); }
+    } catch (err) { console.error('Reject subscription error:', err); ARAalert('خطأ: ' + err.message, 'error'); }
 };
 
 // ============================================
@@ -3941,7 +3720,7 @@ window.confirmResetAllData = async function () {
         ARAalert('هذا الإجراء متاح فقط لصلاحية مدير عام', 'warning');
         return;
     }
-    if (!(await ARAconfirm('⚠️ تحذير! سيتم حذف جميع البيانات (الرحلات، السائقين، الزبائن، الرسائل، الإعلانات، المنتجات، المتاجر، طلبات الشحن، الإشعارات) بشكل نهائي. حساب المالك وسجلات المشرفين تبقى كما هي. هل أنت متأكد؟'))) return;
+    if (!(await ARAconfirm('⚠️ تحذير! سيتم حذف جميع البيانات (الرحلات، السائقين، الزبائن، الرسائل، الإعلانات، طلبات الاشتراك، الإشعارات) بشكل نهائي. حساب المالك وسجلات المشرفين تبقى كما هي. هل أنت متأكد؟'))) return;
     if (!(await ARAconfirm('❌ تأكيد نهائي: لا يمكن التراجع عن هذا الإجراء، وسيبقى حساب المالك فقط محفوظاً. هل تريد المتابعة؟'))) return;
     const status = document.getElementById('resetStatus');
     status.innerHTML = '<span class="text-danger"><i class="bi bi-hourglass-split me-1"></i>جاري مسح البيانات...</span>';
@@ -4772,12 +4551,11 @@ const FN_PERM = {
     deleteDelivery: 'deliveries', deleteLadiesProduct: 'ladies', deleteProduct: 'products',
     deletePromotion: 'promotions', deleteSentCustomerMsg: 'messages', deleteSentMsg: 'messages',
     deleteStore: 'stores', dispatchDeliveryToDrivers: 'deliveries',
-    openCreditModal: 'drivers_credit', openCustomerCreditModal: 'customers_credit',
     openCustomerPasswordModal: 'customers_edit', openDeleteCustomerModal: 'customers_delete',
     openDeleteModal: 'drivers_delete', openDeliveryPriceModal: 'deliveries',
     openEditAdminModal: 'admins', openEditCreditModal: 'drivers_credit',
     openEditCustomerCreditModal: 'customers_credit', openEditCustomerModal: 'customers_edit',
-    openEditModal: 'drivers_edit', openPasswordModal: 'drivers_edit', quickAddCredit: 'drivers_credit',
+    openEditModal: 'drivers_edit', openPasswordModal: 'drivers_edit',
     rejectCustomerProduct: 'products', rejectRechargeRequest: 'recharge_approve',
     reLaunchRide: 'rides', setDeliveryStatus: 'deliveries', toggleCustomerProduct: 'products',
     toggleDriverService: 'drivers_service', toggleDriverStatus: 'drivers_edit',
@@ -4786,8 +4564,8 @@ const FN_PERM = {
 
 const ID_PERM = {
     registerDriverBtn: 'drivers_add', registerCustomerBtn: 'customers_add',
-    confirmCreditBtn: 'drivers_credit', confirmEditCreditBtn: 'drivers_credit',
-    confirmCustomerCreditBtn: 'customers_credit', confirmEditCustomerCreditBtn: 'customers_credit',
+    confirmEditCreditBtn: 'drivers_credit',
+    confirmEditCustomerCreditBtn: 'customers_credit',
     confirmDeleteBtn: 'drivers_delete', confirmDeleteCustomerBtn: 'customers_delete',
     confirmServiceBtn: 'drivers_service', savePasswordBtn: 'drivers_edit',
     saveCustomerPasswordBtn: 'customers_edit', saveEditBtn: 'drivers_edit',
@@ -5848,7 +5626,7 @@ async function loadReports() {
             { label: 'العمولات (MRU)', value: reportMoney(totalComm), icon: 'bi-percent', color: 'text-danger' },
             { label: 'طلبات التوصيل', value: fmtNum(totalDel.toLocaleString('en-US')), icon: 'bi-truck', color: 'text-warning' },
             { label: 'إيراد التوصيل (MRU)', value: reportMoney(delFare), icon: 'bi-cash', color: 'text-warning' },
-            { label: 'الشحن المقبول (MRU)', value: reportMoney(totalRecharge), icon: 'bi-credit-card', color: 'text-success' },
+            { label: 'إيراد الاشتراكات المقبولة (MRU)', value: reportMoney(totalRecharge), icon: 'bi-credit-card', color: 'text-success' },
             { label: 'زبائن فريدون', value: fmtNum(uniqCustomers.size.toLocaleString('en-US')), icon: 'bi-people', color: 'text-info' }
         ];
         body.innerHTML = cards.map(c => `
