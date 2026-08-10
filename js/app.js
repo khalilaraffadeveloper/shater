@@ -2474,9 +2474,51 @@ async function resolveRechargeNames(docs) {
 window.openImageModal = function (imgEl) {
     const modal = document.getElementById('imageViewerModal');
     if (!modal || !imgEl) return;
+    const caption = document.getElementById('imageViewerCaption');
+    if (caption) caption.textContent = imgEl.alt || imgEl.title || 'معاينة';
     document.getElementById('imageViewerImg').src = imgEl.src;
     const bs = bootstrap.Modal.getOrCreateInstance(modal);
     bs.show();
+};
+
+window.openDriverDocuments = async function (driverId) {
+    if (!requireDb()) return;
+    const modal = document.getElementById('driverDocsModal');
+    const body = document.getElementById('driverDocsBody');
+    if (!modal || !body) return;
+    body.innerHTML = '<div class="text-center py-4"><div class="SHATER-spinner mx-auto"></div></div>';
+    const bs = bootstrap.Modal.getOrCreateInstance(modal);
+    bs.show();
+    try {
+        const snap = await db.collection('drivers').doc(driverId).get();
+        if (!snap.exists) {
+            body.innerHTML = '<div class="text-center text-muted py-4">السائق غير موجود</div>';
+            return;
+        }
+        const d = snap.data() || {};
+        const docs = [
+            { label: 'الصورة الشخصية', url: d.photoUrl || '' },
+            { label: 'البطاقة الشخصية', url: d.identityPhotoUrl || d.identityPhoto || '' },
+            { label: 'البطاقة الرمادية', url: d.licensePhotoUrl || d.licensePhoto || '' },
+            { label: 'التأمين على المركبة', url: d.insurancePhotoUrl || '' }
+        ].filter(x => x.url);
+        if (docs.length === 0) {
+            body.innerHTML = '<div class="text-center text-muted py-4">لا توجد وثائق مرفوعة</div>';
+            return;
+        }
+        body.innerHTML = `<div class="row g-3">${docs.map(x => `
+            <div class="col-6 col-md-3">
+                <div class="card h-100 border-0 shadow-sm rounded-3">
+                    <img src="${x.url}" class="card-img-top rounded-top-3" style="height:130px;object-fit:cover;cursor:zoom-in;" onclick="openImageModal(this)" alt="${x.label}" title="${x.label}">
+                    <div class="card-body py-2 px-2 text-center">
+                        <small class="fw-bold text-dark">${x.label}</small>
+                    </div>
+                </div>
+            </div>`).join('')}</div>`;
+    } catch (err) {
+        console.error('Open driver documents error:', err);
+        body.innerHTML = '<div class="text-center text-danger py-4">خطأ في تحميل الوثائق</div>';
+    }
 };
 
 window.approveRechargeRequest = async function(requestId) {
@@ -2721,8 +2763,9 @@ async function loadDriverRegistrations() {
                 : '-';
             const safeName = (d.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
             const isDelivery = d.role === 'delivery' || d.vehicleType === 'bike';
-            const docInfo = (d.licensePhotoUrl || d.licensePhoto || d.identityPhotoUrl)
-                ? `<a class="btn-action btn-action-edit" href="${d.licensePhotoUrl || d.identityPhotoUrl}" target="_blank">عرض الوثائق</a>`
+            const hasDocs = !!(d.photoUrl || d.identityPhotoUrl || d.identityPhoto || d.licensePhotoUrl || d.licensePhoto || d.insurancePhotoUrl);
+            const docInfo = hasDocs
+                ? `<button class="btn-action btn-action-edit" onclick="openDriverDocuments('${d.id}')">عرض الوثائق</button>`
                 : '<span class="text-muted small">—</span>';
             const answers = (d.answers && typeof d.answers === 'object')
                 ? `<small class="text-muted">${(Object.values(d.answers)).join(' • ') || '—'}</small>`
