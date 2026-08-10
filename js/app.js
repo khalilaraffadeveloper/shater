@@ -2502,7 +2502,54 @@ window.openDriverDocuments = async function (driverId) {
             { label: 'البطاقة الرمادية', url: d.licensePhotoUrl || d.licensePhoto || '' },
             { label: 'التأمين على المركبة', url: d.insurancePhotoUrl || '' }
         ].filter(x => x.url);
-        if (docs.length === 0) {
+
+        // ---- Subscription payment request (proof + amount) for this driver ----
+        let subHtml = '';
+        let subReq = null;
+        try {
+            const subsSnap = await db.collection('recharge_requests')
+                .where('type', '==', 'subscription')
+                .get();
+            subsSnap.forEach(r => {
+                const rd = r.data() || {};
+                if (rd.userId !== driverId && rd.driverId !== driverId) return;
+                const t = rd.createdAt && rd.createdAt.toDate ? rd.createdAt.toDate().getTime() : 0;
+                if (!subReq || t > subReq.time) subReq = { time: t, ...rd };
+            });
+            if (subReq) {
+                const statusLabels = { pending: 'قيد الانتظار', approved: 'مقبول', rejected: 'مرفوض' };
+                const badgeCls = { pending: 'badge bg-warning text-dark', approved: 'badge bg-success', rejected: 'badge bg-danger' };
+                const proof = subReq.proofImageUrl
+                    ? `<img src="${subReq.proofImageUrl}" class="img-fluid rounded-3" style="max-height:220px;cursor:zoom-in;" onclick="openImageModal(this)" title="عرض لقطة دفع الاشتراك">`
+                    : (subReq.screenshotBase64
+                        ? `<img src="data:image/jpeg;base64,${subReq.screenshotBase64}" class="img-fluid rounded-3" style="max-height:220px;cursor:zoom-in;" onclick="openImageModal(this)" title="عرض لقطة دفع الاشتراك">`
+                        : '<div class="text-muted small">لا توجد لقطة إثبات</div>');
+                const subTime = subReq.createdAt && subReq.createdAt.toDate
+                    ? subReq.createdAt.toDate().toLocaleString('ar-MA')
+                    : '-';
+                subHtml = `
+                <div class="mt-4 pt-3 border-top">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-credit-card-2-front text-primary fs-5 me-2"></i>
+                        <strong class="text-dark">دفع الاشتراك الشهري</strong>
+                        <span class="ms-auto"><span class="${badgeCls[subReq.status] || 'badge bg-secondary'}">${statusLabels[subReq.status] || subReq.status}</span></span>
+                    </div>
+                    <div class="row g-2 small text-muted">
+                        <div class="col-4"><span class="fw-bold text-dark">المبلغ:</span> ${subReq.amount || 0} MRU</div>
+                        <div class="col-4"><span class="fw-bold text-dark">الوسيلة:</span> ${subReq.paymentMethod || '—'}</div>
+                        <div class="col-4"><span class="fw-bold text-dark">التاريخ:</span> ${subTime}</div>
+                    </div>
+                    <div class="mt-2">${proof}</div>
+                </div>`;
+            } else {
+                subHtml = '<div class="mt-4 pt-3 border-top"><div class="text-muted small">لم يُرفع إثبات دفع الاشتراك بعد</div></div>';
+            }
+        } catch (err) {
+            console.error('Load driver subscription error:', err);
+            subHtml = '<div class="mt-4 pt-3 border-top"><div class="text-danger small">خطأ في تحميل بيانات الاشتراك</div></div>';
+        }
+
+        if (docs.length === 0 && !subReq) {
             body.innerHTML = '<div class="text-center text-muted py-4">لا توجد وثائق مرفوعة</div>';
             return;
         }
@@ -2514,7 +2561,7 @@ window.openDriverDocuments = async function (driverId) {
                         <small class="fw-bold text-dark">${x.label}</small>
                     </div>
                 </div>
-            </div>`).join('')}</div>`;
+            </div>`).join('')}</div>${subHtml}`;
     } catch (err) {
         console.error('Open driver documents error:', err);
         body.innerHTML = '<div class="text-center text-danger py-4">خطأ في تحميل الوثائق</div>';
