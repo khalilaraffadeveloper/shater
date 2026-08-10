@@ -9,7 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20260810" />
+    <link rel="stylesheet" href="css/style.css?v=20260810b" />
 </head>
 <body class="bg-light">
 
@@ -21,38 +21,62 @@
             <small class="text-gold">لوحة تحكم الإدارة</small>
         </div>
         <div class="sidebar-nav flex-grow-1 px-3 py-2">
-            <a href="#" class="sidebar-link active" data-page="map">
+            <div class="sidebar-group">لوحة التحكم</div>
+            <a href="#" class="sidebar-link active" data-page="overview">
+                <i class="bi bi-grid-1x2-fill"></i> نظرة عامة
+            </a>
+            <a href="#" class="sidebar-link" data-page="map">
                 <i class="bi bi-geo-alt-fill"></i> الخريطة المباشرة
+            </a>
+
+            <div class="sidebar-group">تطبيق الزبون</div>
+            <a href="#" class="sidebar-link" data-page="customers">
+                <i class="bi bi-person-badge-fill"></i> الزبائن
+                <span class="nav-badge" id="customersNavBadge"></span>
+            </a>
+            <a href="#" class="sidebar-link" data-page="customer-subscriptions">
+                <i class="bi bi-credit-card-fill"></i> اشتراكات الزبائن
+                <span class="nav-badge" id="customerSubsNavBadge"></span>
+            </a>
+
+            <div class="sidebar-group">تطبيق السائق</div>
+            <a href="#" class="sidebar-link" data-page="drivers">
+                <i class="bi bi-car-front-fill"></i> سائقو السيارات
+                <span class="nav-badge" id="driversNavBadge"></span>
+            </a>
+            <a href="#" class="sidebar-link" data-page="driver-registrations">
+                <i class="bi bi-person-plus-fill"></i> طلبات تسجيل السائقين
+                <span class="nav-badge" id="driverRegsNavBadge"></span>
+            </a>
+            <a href="#" class="sidebar-link" data-page="driver-subscriptions">
+                <i class="bi bi-credit-card-fill"></i> اشتراكات السائقين
+                <span class="nav-badge" id="driverSubsNavBadge"></span>
+            </a>
+
+            <div class="sidebar-group">تطبيق التوصيل</div>
+            <a href="#" class="sidebar-link" data-page="delivery-drivers">
+                <i class="bi bi-bicycle"></i> سائقو التوصيل
+                <span class="nav-badge" id="deliveryDriversNavBadge"></span>
+            </a>
+            <a href="#" class="sidebar-link" data-page="deliveries">
+                <i class="bi bi-truck"></i> طلبات التوصيل
+                <span class="nav-badge" id="deliveriesNavBadge"></span>
+            </a>
+            <a href="#" class="sidebar-link" data-page="delivery-subscriptions">
+                <i class="bi bi-credit-card-fill"></i> اشتراكات التوصيل
+                <span class="nav-badge" id="deliverySubsNavBadge"></span>
+            </a>
+
+            <div class="sidebar-group">التشغيل</div>
+            <a href="#" class="sidebar-link" data-page="rides">
+                <i class="bi bi-journal-text"></i> سجل الرحلات
+                <span class="nav-badge" id="ridesNavBadge"></span>
             </a>
             <a href="#" class="sidebar-link" data-page="reports">
                 <i class="bi bi-graph-up-arrow"></i> التقارير والإحصائيات
             </a>
-            <a href="#" class="sidebar-link" data-page="drivers">
-                <i class="bi bi-people-fill"></i> إدارة السائقين
-                <span class="nav-badge" id="driversNavBadge"></span>
-            </a>
-            <a href="#" class="sidebar-link" data-page="customers">
-                <i class="bi bi-person-badge-fill"></i> إدارة الزبائن
-                <span class="nav-badge" id="customersNavBadge"></span>
-            </a>
-            <a href="#" class="sidebar-link" data-page="devices">
-                <i class="bi bi-phone-fill"></i> الأجهزة
-            </a>
-            <a href="#" class="sidebar-link" data-page="unregistered-customers">
-                <i class="bi bi-person-x-fill"></i> الزبناء غير المسجلين
-            </a>
-<a href="#" class="sidebar-link" data-page="deliveries">
-    <i class="bi bi-truck"></i> طلبات التوصيل
-    <span class="nav-badge" id="deliveriesNavBadge"></span>
-</a>
-<a href="#" class="sidebar-link" data-page="rides">
-    <i class="bi bi-journal-text"></i> سجل الرحلات
-    <span class="nav-badge" id="ridesNavBadge"></span>
-</a>
-            <a href="#" class="sidebar-link" data-page="settings">
-                <i class="bi bi-gear-fill"></i> الإعدادات
-            </a>
-            
+
+            <div class="sidebar-group">الرسائل والإعلانات</div>
             <a href="#" class="sidebar-link" data-page="messages">
                 <i class="bi bi-envelope-fill"></i> الرسائل
             </a>
@@ -62,11 +86,19 @@
             <a href="#" class="sidebar-link" data-page="customer-announcements">
                 <i class="bi bi-bullhorn-fill"></i> إعلانات الزبائن
             </a>
+
+            <div class="sidebar-group">النظام</div>
+            <a href="#" class="sidebar-link" data-page="devices">
+                <i class="bi bi-phone-fill"></i> الأجهزة
+            </a>
+            <a href="#" class="sidebar-link" data-page="unregistered-customers">
+                <i class="bi bi-person-x-fill"></i> الزبناء غير المسجلين
+            </a>
+            <a href="#" class="sidebar-link" data-page="settings">
+                <i class="bi bi-gear-fill"></i> الإعدادات
+            </a>
             <a href="#" class="sidebar-link admin-only" data-page="admins">
                 <i class="bi bi-shield-lock-fill"></i> إدارة المشرفين
-            </a>
-            <a href="#" class="sidebar-link" data-page="promotions">
-                <i class="bi bi-megaphone-fill"></i> العروض والنشاطات
             </a>
         </div>
         <div class="sidebar-stats px-3 pb-3">
@@ -96,38 +128,62 @@
         <div class="offcanvas-body bg-dark-blue p-0">
             <div class="d-flex flex-column h-100">
                 <div class="p-3">
-                    <a href="#" class="sidebar-link active" data-page="map" data-bs-dismiss="offcanvas">
+                    <div class="sidebar-group">لوحة التحكم</div>
+                    <a href="#" class="sidebar-link active" data-page="overview" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-grid-1x2-fill"></i> نظرة عامة
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="map" data-bs-dismiss="offcanvas">
                         <i class="bi bi-geo-alt-fill"></i> الخريطة المباشرة
+                    </a>
+
+                    <div class="sidebar-group">تطبيق الزبون</div>
+                    <a href="#" class="sidebar-link" data-page="customers" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-person-badge-fill"></i> الزبائن
+                        <span class="nav-badge" id="customersNavBadgeMobile"></span>
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="customer-subscriptions" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-credit-card-fill"></i> اشتراكات الزبائن
+                        <span class="nav-badge" id="customerSubsNavBadgeMobile"></span>
+                    </a>
+
+                    <div class="sidebar-group">تطبيق السائق</div>
+                    <a href="#" class="sidebar-link" data-page="drivers" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-car-front-fill"></i> سائقو السيارات
+                        <span class="nav-badge" id="driversNavBadgeMobile"></span>
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="driver-registrations" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-person-plus-fill"></i> طلبات تسجيل السائقين
+                        <span class="nav-badge" id="driverRegsNavBadgeMobile"></span>
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="driver-subscriptions" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-credit-card-fill"></i> اشتراكات السائقين
+                        <span class="nav-badge" id="driverSubsNavBadgeMobile"></span>
+                    </a>
+
+                    <div class="sidebar-group">تطبيق التوصيل</div>
+                    <a href="#" class="sidebar-link" data-page="delivery-drivers" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-bicycle"></i> سائقو التوصيل
+                        <span class="nav-badge" id="deliveryDriversNavBadgeMobile"></span>
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="deliveries" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-truck"></i> طلبات التوصيل
+                        <span class="nav-badge" id="deliveriesNavBadgeMobile"></span>
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="delivery-subscriptions" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-credit-card-fill"></i> اشتراكات التوصيل
+                        <span class="nav-badge" id="deliverySubsNavBadgeMobile"></span>
+                    </a>
+
+                    <div class="sidebar-group">التشغيل</div>
+                    <a href="#" class="sidebar-link" data-page="rides" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-journal-text"></i> سجل الرحلات
+                        <span class="nav-badge" id="ridesNavBadgeMobile"></span>
                     </a>
                     <a href="#" class="sidebar-link" data-page="reports" data-bs-dismiss="offcanvas">
                         <i class="bi bi-graph-up-arrow"></i> التقارير والإحصائيات
                     </a>
-                    <a href="#" class="sidebar-link" data-page="drivers" data-bs-dismiss="offcanvas">
-                        <i class="bi bi-people-fill"></i> إدارة السائقين
-                        <span class="nav-badge" id="driversNavBadgeMobile"></span>
-                    </a>
-                    <a href="#" class="sidebar-link" data-page="customers" data-bs-dismiss="offcanvas">
-                        <i class="bi bi-person-badge-fill"></i> إدارة الزبائن
-                        <span class="nav-badge" id="customersNavBadgeMobile"></span>
-                    </a>
-                    <a href="#" class="sidebar-link" data-page="devices" data-bs-dismiss="offcanvas">
-                        <i class="bi bi-phone-fill"></i> الأجهزة
-                    </a>
-            <a href="#" class="sidebar-link" data-page="unregistered-customers" data-bs-dismiss="offcanvas">
-                <i class="bi bi-person-x-fill"></i> الزبناء غير المسجلين
-            </a>
-            <a href="#" class="sidebar-link" data-page="deliveries" data-bs-dismiss="offcanvas">
-                <i class="bi bi-truck"></i> طلبات التوصيل
-                <span class="nav-badge" id="deliveriesNavBadgeMobile"></span>
-            </a>
-            <a href="#" class="sidebar-link" data-page="rides" data-bs-dismiss="offcanvas">
-                        <i class="bi bi-journal-text"></i> سجل الرحلات
-                        <span class="nav-badge" id="ridesNavBadgeMobile"></span>
-                    </a>
-                    <a href="#" class="sidebar-link" data-page="settings" data-bs-dismiss="offcanvas">
-                        <i class="bi bi-gear-fill"></i> الإعدادات
-                    </a>
-                    
+
+                    <div class="sidebar-group">الرسائل والإعلانات</div>
                     <a href="#" class="sidebar-link" data-page="messages" data-bs-dismiss="offcanvas">
                         <i class="bi bi-envelope-fill"></i> الرسائل
                     </a>
@@ -137,11 +193,19 @@
                     <a href="#" class="sidebar-link" data-page="customer-announcements" data-bs-dismiss="offcanvas">
                         <i class="bi bi-bullhorn-fill"></i> إعلانات الزبائن
                     </a>
+
+                    <div class="sidebar-group">النظام</div>
+                    <a href="#" class="sidebar-link" data-page="devices" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-phone-fill"></i> الأجهزة
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="unregistered-customers" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-person-x-fill"></i> الزبناء غير المسجلين
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="settings" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-gear-fill"></i> الإعدادات
+                    </a>
                     <a href="#" class="sidebar-link admin-only" data-page="admins" data-bs-dismiss="offcanvas">
                         <i class="bi bi-shield-lock-fill"></i> إدارة المشرفين
-                    </a>
-                    <a href="#" class="sidebar-link" data-page="promotions" data-bs-dismiss="offcanvas">
-                        <i class="bi bi-megaphone-fill"></i> العروض والنشاطات
                     </a>
                 </div>
                 <div class="px-3 pb-3 mt-auto">
@@ -343,7 +407,8 @@
                                         <div class="col-md-3 col-6">
                                             <label class="form-label fw-bold">نوع المركبة</label>
                                             <select class="form-select" id="newDriverVehicle">
-                                                <option value="car">سيارة</option>
+                                                <option value="car">سيارة (تطبيق السائق)</option>
+                                                <option value="bike">دراجة / توصيل (تطبيق التوصيل)</option>
                                             </select>
                                         </div>
                                         <div class="col-md-3 col-6">
@@ -438,7 +503,7 @@
                     <div class="col-12" data-perm="recharge_approve">
                         <div class="card shadow-sm border-0">
                             <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-cash-coin me-2 text-gold"></i>طلبات شحن الرصيد (<span id="rechargeRequestsCount">0</span>)</h6>
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-cash-coin me-2 text-gold"></i>طلبات الشحن والاشتراكات (<span id="rechargeRequestsCount">0</span>)</h6>
                                 <button class="btn btn-sm btn-outline-dark-blue" onclick="loadRechargeRequests()"><i class="bi bi-arrow-clockwise me-1"></i>تحديث</button>
                             </div>
                             <div class="card-body">
@@ -448,8 +513,8 @@
                                             <tr>
                                                 <th>الطالب</th>
                                                 <th>الهاتف</th>
-                                                <th>المبلغ والمحفظة</th>
-                                                <th>لقطة الشاشة</th>
+                                                <th>المبلغ والوسيلة</th>
+                                                <th>الإثبات</th>
                                                 <th>التاريخ</th>
                                                 <th>الحالة</th>
                                                 <th>إجراءات</th>
@@ -862,7 +927,7 @@
                                 <h6 class="fw-bold mb-0 text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>مسح جميع البيانات</h6>
                             </div>
                             <div class="card-body text-center">
-                                <p class="text-muted mb-3">سيتم حذف جميع البيانات (الرحلات، السائقين، الزبائن، الرسائل، الإعلانات، طلبات الشحن، الإشعارات). حساب المالك وجميع المشرفين يبقون كما هم، ولا يمكن مسح حساب المالك. لا يمكن التراجع عن هذا الإجراء.</p>
+                                <p class="text-muted mb-3">سيتم حذف جميع البيانات (الرحلات، السائقين، الزبائن، الرسائل، الإعلانات، المنتجات، المتاجر، طلبات الشحن، الإشعارات). حساب المالك وجميع المشرفين يبقون كما هم، ولا يمكن مسح حساب المالك. لا يمكن التراجع عن هذا الإجراء.</p>
                                 <button class="btn btn-danger fw-bold px-5" onclick="confirmResetAllData()">
                                     <i class="bi bi-trash3-fill me-2"></i>مسح الكل وبدء من الصفر
                                 </button>
@@ -1175,62 +1240,306 @@
             </div>
         </div>
 
-        <!-- PROMOTIONS PAGE -->
-        <div class="page-content d-none" id="page-promotions">
+                <!-- OVERVIEW PAGE -->
+        <div class="page-content d-none" id="page-overview">
+            <div class="container-fluid p-3 p-md-4">
+                <div class="row g-3">
+                    <!-- Three Apps cards -->
+                    <div class="col-12">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body">
+                                <h6 class="fw-bold text-dark-blue mb-3"><i class="bi bi-stars me-2 text-gold"></i>شاطر — ثلاثة تطبيقات في منصة واحدة</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <div class="card border-0 rounded-4 text-white h-100" style="background:linear-gradient(135deg,#0A1633,#17306B);">
+                                            <div class="card-body text-center py-4">
+                                                <i class="bi bi-person-badge-fill fs-1 text-gold"></i>
+                                                <h5 class="fw-bold mt-2 mb-0">تطبيق الزبون</h5>
+                                                <small class="text-white-50">اشتراك سنوي — 100 أوقية</small>
+                                                <div class="row g-2 mt-3 text-center">
+                                                    <div class="col-6">
+                                                        <div class="bg-white bg-opacity-10 rounded-3 py-2">
+                                                            <div class="fs-4 fw-bold" id="ovCustomers">0</div>
+                                                            <small class="text-white-50">زبون</small>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <div class="bg-white bg-opacity-10 rounded-3 py-2">
+                                                            <div class="fs-4 fw-bold" id="ovCustomerSubs">0</div>
+                                                            <small class="text-white-50">اشتراك نشط</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button class="btn btn-gold text-white fw-bold mt-3 btn-sm" onclick="navigateToPage('customers')">إدارة الزبائن</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card border-0 rounded-4 text-white h-100" style="background:linear-gradient(135deg,#B34700,#FF7A00);">
+                                            <div class="card-body text-center py-4">
+                                                <i class="bi bi-car-front-fill fs-1"></i>
+                                                <h5 class="fw-bold mt-2 mb-0">تطبيق السائق</h5>
+                                                <small>اشتراك شهري — 100 أوقية</small>
+                                                <div class="row g-2 mt-3 text-center">
+                                                    <div class="col-6">
+                                                        <div class="bg-white bg-opacity-10 rounded-3 py-2">
+                                                            <div class="fs-4 fw-bold" id="ovDrivers">0</div>
+                                                            <small>سائق سيارة</small>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <div class="bg-white bg-opacity-10 rounded-3 py-2">
+                                                            <div class="fs-4 fw-bold" id="ovDriverSubs">0</div>
+                                                            <small>اشتراك نشط</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button class="btn btn-dark text-white fw-bold mt-3 btn-sm" onclick="navigateToPage('drivers')">إدارة السائقين</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card border-0 rounded-4 text-white h-100" style="background:linear-gradient(135deg,#1b5e20,#43a047);">
+                                            <div class="card-body text-center py-4">
+                                                <i class="bi bi-bicycle fs-1"></i>
+                                                <h5 class="fw-bold mt-2 mb-0">تطبيق التوصيل</h5>
+                                                <small>اشتراك شهري — 50 أوقية</small>
+                                                <div class="row g-2 mt-3 text-center">
+                                                    <div class="col-6">
+                                                        <div class="bg-white bg-opacity-10 rounded-3 py-2">
+                                                            <div class="fs-4 fw-bold" id="ovDeliveryDrivers">0</div>
+                                                            <small>سائق توصيل</small>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <div class="bg-white bg-opacity-10 rounded-3 py-2">
+                                                            <div class="fs-4 fw-bold" id="ovDeliverySubs">0</div>
+                                                            <small>اشتراك نشط</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button class="btn btn-gold text-white fw-bold mt-3 btn-sm" onclick="navigateToPage('delivery-drivers')">إدارة التوصيل</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pending actions -->
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center py-4">
+                                <i class="bi bi-credit-card fs-1 text-danger"></i>
+                                <h6 class="fw-bold mt-2 mb-1">طلبات اشتراك بانتظار الموافقة</h6>
+                                <div class="display-5 fw-bold text-danger" id="ovPendingSubs">0</div>
+                                <button class="btn btn-sm btn-outline-danger fw-bold mt-2" onclick="navigateToPage('customer-subscriptions')">مراجعة الطلبات</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center py-4">
+                                <i class="bi bi-person-plus fs-1 text-primary"></i>
+                                <h6 class="fw-bold mt-2 mb-1">طلبات تسجيل سائقين جديدة</h6>
+                                <div class="display-5 fw-bold text-primary" id="ovPendingRegs">0</div>
+                                <button class="btn btn-sm btn-outline-primary fw-bold mt-2" onclick="navigateToPage('driver-registrations')">مراجعة الطلبات</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center py-4">
+                                <i class="bi bi-activity fs-1 text-success"></i>
+                                <h6 class="fw-bold mt-2 mb-1">رحلات اليوم</h6>
+                                <div class="display-5 fw-bold text-success" id="ovTodayRides">0</div>
+                                <button class="btn btn-sm btn-outline-success fw-bold mt-2" onclick="navigateToPage('rides')">سجل الرحلات</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CUSTOMER SUBSCRIPTIONS PAGE -->
+        <div class="page-content d-none" id="page-customer-subscriptions">
+            <div class="container-fluid p-3 p-md-4">
+                <div class="row g-3">
+                    <div class="col-12" data-perm="recharge_approve">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-credit-card-fill me-2 text-gold"></i>اشتراكات الزبائن (سنة — 100 أوقية) (<span id="customerSubsCount">0</span>)</h6>
+                                <button class="btn btn-sm btn-outline-dark-blue" onclick="loadSubscriptionTable('customer')"><i class="bi bi-arrow-clockwise me-1"></i>تحديث</button>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle">
+                                        <thead class="table-dark-blue text-white">
+                                            <tr>
+                                                <th>الطالب</th>
+                                                <th>الهاتف</th>
+                                                <th>المبلغ والمدة</th>
+                                                <th>الإثبات</th>
+                                                <th>التاريخ</th>
+                                                <th>الحالة</th>
+                                                <th>إجراءات</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="customerSubsTableBody">
+                                            <tr><td colspan="7" class="text-center py-3 text-muted small">جاري تحميل الاشتراكات...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DRIVER SUBSCRIPTIONS PAGE -->
+        <div class="page-content d-none" id="page-driver-subscriptions">
+            <div class="container-fluid p-3 p-md-4">
+                <div class="row g-3">
+                    <div class="col-12" data-perm="recharge_approve">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-credit-card-fill me-2 text-gold"></i>اشتراكات السائقين (شهر — 100 أوقية) (<span id="driverSubsCount">0</span>)</h6>
+                                <button class="btn btn-sm btn-outline-dark-blue" onclick="loadSubscriptionTable('driver')"><i class="bi bi-arrow-clockwise me-1"></i>تحديث</button>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle">
+                                        <thead class="table-dark-blue text-white">
+                                            <tr>
+                                                <th>الطالب</th>
+                                                <th>الهاتف</th>
+                                                <th>المبلغ والمدة</th>
+                                                <th>الإثبات</th>
+                                                <th>التاريخ</th>
+                                                <th>الحالة</th>
+                                                <th>إجراءات</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="driverSubsTableBody">
+                                            <tr><td colspan="7" class="text-center py-3 text-muted small">جاري تحميل الاشتراكات...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DELIVERY SUBSCRIPTIONS PAGE -->
+        <div class="page-content d-none" id="page-delivery-subscriptions">
+            <div class="container-fluid p-3 p-md-4">
+                <div class="row g-3">
+                    <div class="col-12" data-perm="recharge_approve">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-credit-card-fill me-2 text-gold"></i>اشتراكات التوصيل (شهر — 50 أوقية) (<span id="deliverySubsCount">0</span>)</h6>
+                                <button class="btn btn-sm btn-outline-dark-blue" onclick="loadSubscriptionTable('delivery')"><i class="bi bi-arrow-clockwise me-1"></i>تحديث</button>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle">
+                                        <thead class="table-dark-blue text-white">
+                                            <tr>
+                                                <th>الطالب</th>
+                                                <th>الهاتف</th>
+                                                <th>المبلغ والمدة</th>
+                                                <th>الإثبات</th>
+                                                <th>التاريخ</th>
+                                                <th>الحالة</th>
+                                                <th>إجراءات</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="deliverySubsTableBody">
+                                            <tr><td colspan="7" class="text-center py-3 text-muted small">جاري تحميل الاشتراكات...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DRIVER REGISTRATIONS PAGE -->
+        <div class="page-content d-none" id="page-driver-registrations">
+            <div class="container-fluid p-3 p-md-4">
+                <div class="row g-3">
+                    <div class="col-12" data-perm="drivers">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-person-plus-fill me-2 text-gold"></i>طلبات تسجيل السائقين (سائق / توصيل) (<span id="driverRegsCount">0</span>)</h6>
+                                <button class="btn btn-sm btn-outline-dark-blue" onclick="loadDriverRegistrations()"><i class="bi bi-arrow-clockwise me-1"></i>تحديث</button>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small mb-3">عند القبول، يُنشأ حساب السائق تلقائياً ويُفتح له تسجيل الدخول. يشترط تفعيل الاشتراك لاحقاً من صفحة الاشتراكات.</p>
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle">
+                                        <thead class="table-dark-blue text-white">
+                                            <tr>
+                                                <th>الطالب</th>
+                                                <th>الهاتف</th>
+                                                <th>النوع</th>
+                                                <th>الوثائق</th>
+                                                <th>الأسئلة</th>
+                                                <th>التاريخ</th>
+                                                <th>الحالة</th>
+                                                <th>إجراءات</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="driverRegsTableBody">
+                                            <tr><td colspan="8" class="text-center py-3 text-muted small">جاري تحميل الطلبات...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DELIVERY DRIVERS PAGE -->
+        <div class="page-content d-none" id="page-delivery-drivers">
             <div class="container-fluid p-3 p-md-4">
                 <div class="row g-3">
                     <div class="col-12">
                         <div class="card shadow-sm border-0">
-                            <div class="card-header bg-white border-bottom">
-                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-plus-circle me-2 text-gold"></i>إضافة عرض أو نشاط جديد</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-bold">العنوان</label>
-                                        <input type="text" class="form-control" id="promoTitle" placeholder="عنوان العرض">
-                                    </div>
-                                    <div class="col-md-3 col-6">
-                                        <label class="form-label fw-bold">النوع</label>
-                                        <select class="form-select" id="promoType">
-                                            <option value="promotion">عرض</option>
-                                            <option value="activity">نشاط</option>
-                                            <option value="offer">تخفيض</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3 col-6">
-                                        <label class="form-label fw-bold">رابط فيديو (YouTube أو TikTok)</label>
-                                        <input type="url" class="form-control" id="promoVideo" placeholder="https://youtube.com/... أو https://tiktok.com/...">
-                                    </div>
-                                    <div class="col-12">
-                                        <label class="form-label fw-bold">الوصف</label>
-                                        <textarea class="form-control" id="promoDescription" rows="3" placeholder="نص العرض..."></textarea>
-                                    </div>
-                                    <div class="col-md-8">
-                                        <label class="form-label fw-bold">صور (اختيار متعدد)</label>
-                                        <input type="file" class="form-control" id="promoImages" accept="image/*" multiple>
-                                    </div>
-                                    <div class="col-md-8 mt-2">
-                                        <label class="form-label fw-bold small">أو أدخل روابط صور مباشرة (واحد لكل سطر)</label>
-                                        <textarea class="form-control" id="promoImageUrls" rows="2" placeholder="https://example.com/image1.jpg"></textarea>
-                                    </div>
-                                    <div id="promoImagesPreview" class="col-12 d-flex gap-2 flex-wrap"></div>
-                                </div>
-                                <button class="btn btn-dark-blue text-white fw-bold mt-3" id="btnAddPromotion" onclick="addPromotion()">
-                                    <i class="bi bi-check-circle me-1"></i>إضافة العرض
-                                </button>
-                                <div class="mt-2 fw-semibold" id="addPromoStatus"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-12">
-                        <div class="card shadow-sm border-0">
                             <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
-                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-list me-2 text-gold"></i>قائمة العروض والنشاطات (<span id="promoCount">0</span>)</h6>
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-bicycle me-2 text-gold"></i>سائقو التوصيل (دراجة) (<span id="totalDeliveryDriversCount">0</span>)</h6>
+                                <button class="btn btn-sm btn-outline-dark-blue" onclick="loadDeliveryDrivers()"><i class="bi bi-arrow-clockwise me-1"></i>تحديث</button>
                             </div>
                             <div class="card-body">
-                                <div id="promotionsList" class="row g-3">
-                                    <div class="col-12 text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري التحميل...</div></div>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-8 col-7">
+                                        <input type="text" class="form-control" id="searchDeliveryDrivers" placeholder="بحث بالاسم أو الهاتف..." oninput="filterDeliveryDrivers()">
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle">
+                                        <thead class="table-dark-blue text-white">
+                                            <tr>
+                                                <th>الاسم</th>
+                                                <th>الهاتف</th>
+                                                <th>كلمة السر</th>
+                                                <th>الرصيد</th>
+                                                <th>الحالة</th>
+                                                <th>إجراءات</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="deliveryDriversTableBody">
+                                            <tr><td colspan="6" class="text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل سائقي التوصيل...</div></td></tr>
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>
@@ -1507,6 +1816,75 @@
         </div>
     </div>
 
+    <!-- EDIT CUSTOMER PRODUCT MODAL -->
+    <div class="modal fade" id="editCustomerProductModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom">
+                    <h6 class="fw-bold"><i class="bi bi-pencil-square me-2 text-gold"></i>تعديل منتج الزبون</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editCustomerProductId">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">اسم المنتج</label>
+                        <input type="text" class="form-control" id="editCustomerProductName">
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold">السعر (MRU)</label>
+                            <input type="number" class="form-control" id="editCustomerProductPrice" min="0">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold">العرض الشهري (MRU)</label>
+                            <input type="number" class="form-control" id="editCustomerProductMonthly" min="0">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">هاتف البائع</label>
+                        <input type="tel" class="form-control" id="editCustomerProductPhone">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الوصف</label>
+                        <textarea class="form-control" id="editCustomerProductDescription" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">عدد المشاهدات</label>
+                        <input type="text" class="form-control" id="editCustomerProductViews" readonly>
+                        <small class="text-muted">يُحسب تلقائياً من تطبيق الزبون</small>
+                    </div>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-dark-blue text-white fw-bold" id="saveEditCustomerProductBtn">حفظ التعديلات</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STORE LOCATION MAP MODAL -->
+    <div class="modal fade" id="storeMapModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom">
+                    <h6 class="fw-bold"><i class="bi bi-geo-alt me-2 text-gold"></i>تحديد موقع المتجر على الخريطة</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="small text-muted mb-2"><i class="bi bi-hand-index-thumb me-1"></i>انقر على الخريطة لتحديد موقع المتجر</div>
+                    <div id="storeMapPicker" style="height:55vh;border-radius:12px;overflow:hidden;"></div>
+                </div>
+                <div class="modal-footer border-top d-flex justify-content-between">
+                    <div class="fw-semibold text-muted small" id="storeMapCoordsText">لم يُحدد بعد</div>
+                    <div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="button" class="btn btn-dark-blue text-white fw-bold" id="confirmStoreLocationBtn">تأكيد الموقع</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- EDIT ADMIN MODAL -->
     <div class="modal fade" id="editAdminModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -1770,7 +2148,7 @@
         </div>
     </div>
 
-    <script src="js/app.js?v=20260810"></script>
+    <script src="js/app.js?v=20260810b"></script>
 </body>
 </html>
 
