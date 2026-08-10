@@ -142,10 +142,22 @@ app.post('/api/send-fcm', async (req, res) => {
         });
 
         const isRideRequest = cleanData.type === 'ride_request';
+        const useApprovalSound = cleanData.sound === 'approval';
         const message = {
             ...(isRideRequest
                 ? { data: cleanData }
-                : { notification: { title: title || 'شاطر', body: body || 'إشعار جديد' }, data: cleanData }),
+                : {
+                    notification: { title: title || 'شاطر', body: body || 'إشعار جديد' },
+                    data: cleanData,
+                    android: useApprovalSound ? {
+                        priority: 'HIGH',
+                        notification: {
+                            channelId: 'shater_notifications',
+                            sound: 'shatter_approval',
+                            priority: 'HIGH'
+                        }
+                    } : undefined
+                }),
             tokens
         };
 

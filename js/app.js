@@ -2531,11 +2531,26 @@ window.approveRechargeRequest = async function(requestId) {
             processedBy: (firebase.auth().currentUser && firebase.auth().currentUser.email) || 'admin'
         });
         if (isDriver) loadDriversList(); else loadCustomersList();
+        let notifBody = `${isRenewal ? 'تم تجديد' : 'تم تفعيل'} اشتراكك (${planLabel}) بنجاح حتى ${expLabel}`;
+        const notifExtra = { amount: String(amount) };
+        if (!isRenewal) {
+            let targetData = {};
+            try {
+                const tDoc = await db.collection(targetColl).doc(targetId).get();
+                if (tDoc.exists) targetData = tDoc.data() || {};
+            } catch (e) { console.error('Read target for notification error:', e); }
+            const phone = targetData.phone || r.phone || '';
+            const password = targetData.password || '';
+            if (phone || password) {
+                notifBody += ` بيانات الدخول الخاصة بك: رقم الهاتف: ${phone} — كلمة المرور: ${password}.`;
+                notifExtra.sound = 'approval';
+            }
+        }
         await notifyUser(targetColl, targetId, {
             type: 'subscription_approved',
-            title: isRenewal ? 'تم تجديد اشتراكك' : 'تم تفعيل اشتراكك',
-            body: `${isRenewal ? 'تم تجديد' : 'تم تفعيل'} اشتراكك (${planLabel}) بنجاح حتى ${expLabel}`,
-            amount: String(amount)
+            title: isRenewal ? 'تم تجديد اشتراكك' : 'تم اعتماد تسجيلك واشتراكك',
+            body: notifBody,
+            ...notifExtra
         });
         ARAalert(isRenewal ? 'تم تجديد الاشتراك' : 'تم تفعيل الاشتراك', 'success');
     } catch (err) { console.error('Approve subscription error:', err); ARAalert('خطأ: ' + err.message, 'error'); }
@@ -2737,10 +2752,13 @@ window.approveDriverRegistration = async function (driverId) {
             registrationApproved: true,
             registrationApprovedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
+        const phone = data.phone || '';
+        const password = data.password || '';
         await notifyUser('drivers', driverId, {
             type: 'registration_approved',
-            title: 'تم قبول تسجيلك',
-            body: 'تمت الموافقة على طلب تسجيلك. يمكنك الآن تسجيل الدخول. يرجى تفعيل اشتراكك من قسم الاشتراكات.'
+            title: 'تم قبول تسجيلك — أهلاً بك في شاطر',
+            body: `تمت الموافقة على طلب تسجيلك. بيانات الدخول الخاصة بك: رقم الهاتف: ${phone} — كلمة المرور: ${password}. يمكنك الآن تسجيل الدخول وتفعيل اشتراكك.`,
+            sound: 'approval'
         });
         ARAalert('تم قبول السائق وإشعاره', 'success');
         loadDriverRegistrations();
@@ -3639,6 +3657,7 @@ async function notifyUser(collectionName, docId, payload) {
             body,
             amount: data.amount || '',
             balance: data.balance || '',
+            sound: data.sound || '',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         addNotifLog('system', `تمت كتابة إشعار لـ ${collectionName}: ${title}`);
