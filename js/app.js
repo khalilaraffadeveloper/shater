@@ -2591,6 +2591,16 @@ window.rejectRechargeRequest = async function(requestId) {
     } catch (err) { console.error('Reject subscription error:', err); ARAalert('خطأ: ' + err.message, 'error'); }
 };
 
+window.deleteSubscriptionRequest = async function (requestId) {
+    if (!requireDb()) return;
+    if (!guardPerm('recharge_approve', 'ليست لديك صلاحية إدارة سجل الاشتراكات')) return;
+    if (!(await ARAconfirm('سيتم حذف طلب الاشتراك من السجل نهائياً. حساب المستخدم واشتراكه الفعّال لن يتأثرا. تأكيد؟'))) return;
+    try {
+        await db.collection('recharge_requests').doc(requestId).delete();
+        ARAalert('تم حذف الطلب من السجل', 'success');
+    } catch (err) { console.error('Delete subscription request error:', err); ARAalert('خطأ: ' + err.message, 'error'); }
+};
+
 // ============================================
 // SUBSCRIPTION TABLES (اشتراكات الزبائن / السائقين / التوصيل)
 // ============================================
@@ -2665,6 +2675,7 @@ function loadSubscriptionTable(role) {
                         } else {
                             actions = '<span class="text-muted small">تمت المعالجة</span>';
                         }
+                        actions += `<button class="btn-action btn-action-delete" onclick="deleteSubscriptionRequest('${id}')" title="حذف من السجل"><i class="bi bi-trash"></i></button>`;
                         return `<tr>
                             <td><strong>${safeName}</strong></td>
                             <td><span dir="ltr">${phone}</span>${r.transactionRef ? `<br><small class="text-muted" dir="ltr">مرجع: ${r.transactionRef}</small>` : ''}</td>
@@ -4569,7 +4580,7 @@ const FN_PERM = {
     deleteCustomerAnnouncement: 'customer_announcements', deleteCustomerProduct: 'products',
     deleteDelivery: 'deliveries', deleteLadiesProduct: 'ladies', deleteProduct: 'products',
     deletePromotion: 'promotions', deleteSentCustomerMsg: 'messages', deleteSentMsg: 'messages',
-    deleteStore: 'stores', dispatchDeliveryToDrivers: 'deliveries',
+    deleteStore: 'stores', deleteSubscriptionRequest: 'recharge_approve', dispatchDeliveryToDrivers: 'deliveries',
     openCustomerPasswordModal: 'customers_edit', openDeleteCustomerModal: 'customers_delete',
     openDeleteModal: 'drivers_delete', openDeliveryPriceModal: 'deliveries',
     openEditAdminModal: 'admins', openEditCreditModal: 'drivers_credit',
