@@ -2825,28 +2825,33 @@ function loadSubscriptionTable(role) {
     try {
         const handle = db.collection('recharge_requests')
             .where('type', '==', 'subscription')
-            .where('userRole', '==', role)
-            .orderBy('createdAt', 'desc').limit(100)
             .onSnapshot(snapshot => {
                 const docs = [];
                 let pendingCount = 0;
                 snapshot.forEach(d => {
                     const r = d.data();
+                    if (r.userRole !== role) return;
                     if (r.status === 'pending') pendingCount++;
                     docs.push({ id: d.id, r });
                 });
-                document.getElementById(cfg.count).textContent = docs.length;
+                docs.sort((a, b) => {
+                    const ta = a.r.createdAt && a.r.createdAt.toDate ? a.r.createdAt.toDate().getTime() : 0;
+                    const tb = b.r.createdAt && b.r.createdAt.toDate ? b.r.createdAt.toDate().getTime() : 0;
+                    return tb - ta;
+                });
+                const recent = docs.slice(0, 100);
+                document.getElementById(cfg.count).textContent = recent.length;
                 const pendingBadge = document.getElementById(cfg.badge);
                 if (pendingBadge) {
                     pendingBadge.textContent = pendingCount > 99 ? '99+' : pendingCount;
                     pendingBadge.classList.toggle('show', pendingCount > 0);
                 }
-                if (docs.length === 0) {
+                if (recent.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">لا توجد طلبات اشتراك</td></tr>';
                     return;
                 }
-                resolveRechargeNames(docs).then(nameMap => {
-                    tbody.innerHTML = docs.map(({ id, r }) => {
+                resolveRechargeNames(recent).then(nameMap => {
+                    tbody.innerHTML = recent.map(({ id, r }) => {
                         const time = r.createdAt && r.createdAt.toDate
                             ? r.createdAt.toDate().toLocaleString('ar-MA')
                             : '-';
@@ -3002,13 +3007,15 @@ async function loadOverview() {
         const [custSnap, driverSnap, subsSnap, regsSnap, ridesSnap] = await Promise.all([
             db.collection('customers').get(),
             db.collection('drivers').get(),
-            db.collection('recharge_requests').where('type', '==', 'subscription').where('status', '==', 'pending').get(),
+            db.collection('recharge_requests').where('type', '==', 'subscription').get(),
             db.collection('drivers').where('pendingRegistration', '==', true).get(),
             db.collection('rides').get()
         ]);
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
         set('ovCustomers', custSnap.size);
-        set('ovPendingSubs', subsSnap.size);
+        let pendingSubs = 0;
+        subsSnap.forEach(doc => { if (doc.data().status === 'pending') pendingSubs++; });
+        set('ovPendingSubs', pendingSubs);
         set('ovPendingRegs', regsSnap.size);
         let activeCustSubs = 0, activeDriverSubs = 0, deliveryCount = 0, activeDeliverySubs = 0, driverCount = 0;
         custSnap.forEach(doc => { const s = doc.data().subscription || {}; if (s.active && (!s.expiresAt || s.expiresAt.toDate() > new Date())) activeCustSubs++; });
