@@ -6054,3 +6054,233 @@ window.deleteAllUnknownAccounts = async function () {
         loadDevices();
     } catch (err) { ARAalert('خطأ: ' + (err.message || ''), 'error'); }
 };
+
+// ============================================
+// DASHBOARD VOICE CALLS (Agora Web RTC)
+// The app can call the dashboard directly from the first screen — the admin
+// answers right here in the browser. App ID matches shater_driver_app.
+// ============================================
+const SHATER_AGORA_APP_ID = 'ad98839b806b4ec6b8a7ab5d2ec2deaf';
+let shaterCallListener = null;
+let shaterRtcClient = null;
+let shaterLocalMicTrack = null;
+let shaterRemoteAudioTrack = null;
+let shaterCurrentCall = null; // { id, callerName, callerRole, channelName }
+let shaterRingtoneTimer = null;
+let shaterRingtoneAudio = null;
+let shaterMicMuted = false;
+
+// --- Ringtone via Web Audio API (no external file needed) ---
+function shaterStartRingtone() {
+    shaterStopRingtone();
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const gain = ctx.createGain();
+        gain.connect(ctx.destination);
+        gain.gain.value = 0.25;
+        const notes = [880, 1174.66]; // A5 -> D6 (classic ring)
+        let step = 0;
+        shaterRingtoneTimer = setInterval(() => {
+            const osc = ctx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.value = notes[step % notes.length];
+            osc.connect(gain);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.45);
+            step++;
+        }, 500);
+        shaterRingtoneAudio = ctx;
+    } catch (e) { console.warn('Ringtone error:', e); }
+}
+function shaterStopRingtone() {
+    if (shaterRingtoneTimer) { clearInterval(shaterRingtoneTimer); shaterRingtoneTimer = null; }
+    try { if (shaterRingtoneAudio) shaterRingtoneAudio.close(); } catch (e) {}
+    shaterRingtoneAudio = null;
+}
+
+// --- Incoming call modal ---
+function shaterShowIncomingCall(callId, data) {
+    if (shaterCurrentCall) return; // already in a call
+    shaterCurrentCall = {
+        id: callId,
+        callerName: data.callerName || 'ضيف',
+        callerRole: data.callerRole || 'guest',
+        channelName: data.channelName || '',
+    };
+    document.getElementById('shaterIncomingCallInfo').textContent =
+        `${shaterCurrentCall.callerName} — ${shaterCurrentCall.callerRole === 'guest' ? 'زائر' : shaterCurrentCall.callerRole}`;
+    const modal = new bootstrap.Modal(document.getElementById('shaterIncomingCallModal'));
+    modal.show();
+    shaterStartRingtone();
+}
+
+function shaterHideIncomingCall() {
+    shaterStopRingtone();
+    const el = document.getElementById('shaterIncomingCallModal');
+    const modal = bootstrap.Modal.getInstance(el);
+    if (modal) modal.hide();
+}
+
+// --- Answer: join the Agora channel and publish the mic ---
+async function shaterAnswerCall() {
+    if (!shaterCurrentCall || !window.AgoraRTC) {
+        ARAalert('تعذر بدء المكالمة: تأكد من تحميل Agora SDK', 'error');
+        return;
+    }
+    try {
+        const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+        await client.join(SHATER_AGORA_APP_ID, shaterCurrentCall.channelName, null, shaterAdminUid());
+        shaterLocalMicTrack = await AgoraRTC.createMicrophoneAudioTrack();
+        await client.publish([shaterLocalMicTrack]);
+        shaterRtcClient = client;
+        client.on('user-published', async (user, mediaType) => {
+            if (mediaType !== 'audio') return;
+            await client.subscribe(user, mediaType);
+            shaterRemoteAudioTrack = user.audioTrack;
+            if (user.audioTrack) user.audioTrack.play();
+        });
+        client.on('user-unpublished', (user, mediaType) => {
+            if (mediaType === 'audio' && user.audioTrack) user.audioTrack.stop();
+        });
+        client.on('user-left', () => { shaterEndCall(true); });
+        // Mark the call as ongoing so the app sees it was answered.
+        await db.collection('calls').doc(shaterCurrentCall.id).update({
+            status: 'ongoing',
+            startedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        shaterHideIncomingCall();
+        shaterShowActiveBar();
+    } catch (err) {
+        console.error('Answer call error:', err);
+        ARAalert('خطأ في الرد على المكالمة: ' + (err.message || ''), 'error');
+        shaterHideIncomingCall();
+        shaterCurrentCall = null;
+    }
+}
+
+function shaterAdminUid() {
+    // Stable positive uid from the logged-in admin username.
+    const name = sessionStorage.getItem('SHATER_admin_username') || 'admin';
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = ((h << 5) - h) + name.charCodeAt(i);
+    return (h >>> 0) % 2147483647;
+}
+
+function shaterShowActiveBar() {
+    if (shaterCurrentCall) {
+        document.getElementById('shaterActiveCallName').textContent = shaterCurrentCall.callerName;
+    }
+    document.getElementById('shaterActiveCallState').textContent = 'جارية...';
+    const bar = document.getElementById('shaterActiveCallBar');
+    bar.classList.remove('d-none');
+    bar.classList.add('d-flex');
+}
+
+function shaterHideActiveBar() {
+    const bar = document.getElementById('shaterActiveCallBar');
+    bar.classList.add('d-none');
+    bar.classList.remove('d-flex');
+}
+
+function shaterToggleMute() {
+    if (!shaterLocalMicTrack) return;
+    shaterMicMuted = !shaterMicMuted;
+    try { shaterLocalMicTrack.setEnabled(!shaterMicMuted); } catch (e) {}
+    const btn = document.getElementById('shaterMuteCallBtn');
+    btn.innerHTML = shaterMicMuted
+        ? '<i class="bi bi-mic-mute-fill"></i>'
+        : '<i class="bi bi-mic-fill"></i>';
+    btn.classList.toggle('btn-outline-light', !shaterMicMuted);
+    btn.classList.toggle('btn-warning', shaterMicMuted);
+}
+
+// --- End / decline the call ---
+async function shaterEndCall(isPeerLeft) {
+    const call = shaterCurrentCall;
+    shaterStopRingtone();
+    shaterHideIncomingCall();
+    shaterHideActiveBar();
+    if (shaterRtcClient) {
+        try {
+            await shaterRtcClient.leave();
+        } catch (e) {}
+        shaterRtcClient = null;
+    }
+    if (shaterLocalMicTrack) { try { await shaterLocalMicTrack.close(); } catch (e) {} shaterLocalMicTrack = null; }
+    if (shaterRemoteAudioTrack) { try { shaterRemoteAudioTrack.stop(); } catch (e) {} shaterRemoteAudioTrack = null; }
+    shaterCurrentCall = null;
+    if (call && db) {
+        try {
+            await db.collection('calls').doc(call.id).update({
+                status: isPeerLeft ? 'ended' : 'ended',
+                endedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            });
+        } catch (e) {}
+    }
+}
+
+async function shaterDeclineCall() {
+    const call = shaterCurrentCall;
+    shaterStopRingtone();
+    shaterHideIncomingCall();
+    shaterCurrentCall = null;
+    if (call && db) {
+        try {
+            await db.collection('calls').doc(call.id).update({
+                status: 'declined',
+                endedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            });
+        } catch (e) {}
+    }
+}
+
+// --- Listen for calls aimed at the dashboard ---
+function shaterListenForCalls() {
+    if (!requireDb() || !db) return;
+    if (shaterCallListener) return;
+    shaterCallListener = db.collection('calls')
+        .where('calleeId', '==', 'dashboard')
+        .onSnapshot(snap => {
+            snap.docChanges().forEach(change => {
+                const data = change.doc.data();
+                const status = (data.status || '');
+                if (change.type === 'added' || change.type === 'modified') {
+                    if (status === 'ringing') {
+                        shaterShowIncomingCall(change.doc.id, data);
+                    } else if (shaterCurrentCall && change.doc.id === shaterCurrentCall.id &&
+                        (status === 'ended' || status === 'missed' || status === 'declined')) {
+                        // The app cancelled/hung up while the modal was ringing.
+                        shaterStopRingtone();
+                        shaterHideIncomingCall();
+                        shaterHideActiveBar();
+                        if (shaterRtcClient) {
+                            try { shaterRtcClient.leave(); } catch (e) {}
+                            shaterRtcClient = null;
+                        }
+                        if (shaterLocalMicTrack) { try { shaterLocalMicTrack.close(); } catch (e) {} shaterLocalMicTrack = null; }
+                        shaterCurrentCall = null;
+                    }
+                } else if (change.type === 'removed' && shaterCurrentCall &&
+                    change.doc.id === shaterCurrentCall.id) {
+                    shaterStopRingtone();
+                    shaterHideIncomingCall();
+                    shaterHideActiveBar();
+                    shaterCurrentCall = null;
+                }
+            });
+        }, err => console.error('Calls listener error:', err));
+}
+
+function shaterBindCallButtons() {
+    document.getElementById('shaterAnswerCallBtn')?.addEventListener('click', shaterAnswerCall);
+    document.getElementById('shaterDeclineCallBtn')?.addEventListener('click', shaterDeclineCall);
+    document.getElementById('shaterEndCallBtn')?.addEventListener('click', () => shaterEndCall(false));
+    document.getElementById('shaterMuteCallBtn')?.addEventListener('click', shaterToggleMute);
+    shaterListenForCalls();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', shaterBindCallButtons);
+} else {
+    shaterBindCallButtons();
+}

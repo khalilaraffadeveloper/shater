@@ -2088,7 +2088,43 @@
         </div>
     </div>
 
-    <script src="js/app.js?v=20260810k"></script>
+    <!-- DASHBOARD INCOMING CALL MODAL -->
+    <div class="modal fade" id="shaterIncomingCallModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0" style="background:linear-gradient(180deg,#0A0A0A,#003366);">
+                <div class="modal-body text-center text-white p-4">
+                    <div class="mx-auto mb-3 d-flex align-items-center justify-content-center" style="width:84px;height:84px;border-radius:50%;background:var(--k-gold);">
+                        <i class="bi bi-telephone-fill" style="font-size:36px;color:#fff;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-1">مكالمة واردة</h5>
+                    <div class="mb-2 small" style="color:var(--k-gold-light);">من لوحة تحكم شاطر</div>
+                    <div class="mb-3 text-white-50 small" id="shaterIncomingCallInfo">-</div>
+                    <div class="d-flex justify-content-center gap-3">
+                        <button type="button" class="btn btn-danger btn-lg rounded-circle" id="shaterDeclineCallBtn" title="رفض" style="width:64px;height:64px;"><i class="bi bi-telephone-x-fill"></i></button>
+                        <button type="button" class="btn btn-success btn-lg rounded-circle" id="shaterAnswerCallBtn" title="رد" style="width:64px;height:64px;"><i class="bi bi-telephone-fill"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ACTIVE CALL BAR -->
+    <div id="shaterActiveCallBar" class="d-none align-items-center justify-content-between px-3 py-2 text-white" style="position:fixed;bottom:0;left:0;right:0;background:linear-gradient(90deg,#0A0A0A,#003366);z-index:1090;border-top:2px solid var(--k-gold);">
+        <div class="d-flex align-items-center">
+            <span class="badge bg-success me-2"><i class="bi bi-phone-fill"></i></span>
+            <div>
+                <div class="fw-bold small" id="shaterActiveCallName">مكالمة</div>
+                <div class="small" style="color:var(--k-gold-light);" id="shaterActiveCallState">جارية...</div>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-light btn-sm rounded-circle" id="shaterMuteCallBtn" title="كتم"><i class="bi bi-mic-fill"></i></button>
+            <button type="button" class="btn btn-danger btn-sm rounded-circle" id="shaterEndCallBtn" title="إنهاء"><i class="bi bi-telephone-x-fill"></i></button>
+        </div>
+    </div>
+
+    <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.22.0.js"></script>
+    <script src="js/app.js?v=20260811a"></script>
 </body>
 </html>
 
