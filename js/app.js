@@ -6184,8 +6184,33 @@ async function shaterAnswerCall() {
     }
     try {
         const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+        // Register handlers BEFORE joining so the caller's audio (published
+        // while the phone was still ringing) is never missed.
+        const shaterSubscribed = new Set();
+        const shaterSubscribeUser = async (user) => {
+            if (shaterSubscribed.has(user.uid)) return;
+            shaterSubscribed.add(user.uid);
+            await client.subscribe(user, 'audio');
+            shaterRemoteAudioTrack = user.audioTrack;
+            if (user.audioTrack) user.audioTrack.play();
+        };
+        client.on('user-published', async (user, mediaType) => {
+            if (mediaType !== 'audio') return;
+            try { await shaterSubscribeUser(user); } catch (e) { console.warn('Subscribe error:', e); }
+        });
+        client.on('user-unpublished', (user, mediaType) => {
+            if (mediaType === 'audio' && user.audioTrack) user.audioTrack.stop();
+        });
+        client.on('user-left', () => { shaterEndCall(true); });
         const shaterToken = shaterBuildAgoraToken(call.channelName, shaterAdminUid());
         await client.join(SHATER_AGORA_APP_ID, call.channelName, shaterToken, shaterAdminUid());
+        // Users already in the channel (the app joined at ring time) may not
+        // fire user-published again — subscribe to them explicitly.
+        for (const user of client.remoteUsers) {
+            if (user.hasAudio && !shaterSubscribed.has(user.uid)) {
+                try { await shaterSubscribeUser(user); } catch (e) { console.warn('Subscribe existing user error:', e); }
+            }
+        }
         try {
             shaterLocalMicTrack = await AgoraRTC.createMicrophoneAudioTrack();
         } catch (micErr) {
@@ -6201,16 +6226,6 @@ async function shaterAnswerCall() {
         }
         await client.publish([shaterLocalMicTrack]);
         shaterRtcClient = client;
-        client.on('user-published', async (user, mediaType) => {
-            if (mediaType !== 'audio') return;
-            await client.subscribe(user, mediaType);
-            shaterRemoteAudioTrack = user.audioTrack;
-            if (user.audioTrack) user.audioTrack.play();
-        });
-        client.on('user-unpublished', (user, mediaType) => {
-            if (mediaType === 'audio' && user.audioTrack) user.audioTrack.stop();
-        });
-        client.on('user-left', () => { shaterEndCall(true); });
         // Mark the call as ongoing so the app sees it was answered.
         await db.collection('calls').doc(call.id).update({
             status: 'ongoing',
