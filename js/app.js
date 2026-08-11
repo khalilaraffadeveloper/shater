@@ -6068,6 +6068,7 @@ let shaterLocalMicTrack = null;
 let shaterRemoteAudioTrack = null;
 let shaterCurrentCall = null; // { id, callerName, callerRole, channelName }
 let shaterRingtoneAudio = null;
+let shaterRingTimer = null;
 let shaterMicMuted = false;
 
 // --- Ringtone: project's own soft notification tone, looped ---
@@ -6101,6 +6102,20 @@ function shaterShowIncomingCall(callId, data) {
         return;
     }
     if (!data.channelName) return; // wait for the channel name to be written
+    // Never ring forever: a ring older than 90s means the caller's app was
+    // closed or the request is stale — expire it instead of showing it.
+    const createdMs = data.createdAt && data.createdAt.seconds
+        ? data.createdAt.seconds * 1000 : Date.now();
+    if (Date.now() - createdMs > 90000) {
+        try {
+            db.collection('calls').doc(callId).update({
+                status: 'missed',
+                endReason: 'expired',
+                endedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            });
+        } catch (e) {}
+        return;
+    }
     shaterCurrentCall = {
         id: callId,
         callerName: data.callerName || 'ضيف',
@@ -6112,6 +6127,52 @@ function shaterShowIncomingCall(callId, data) {
     const modal = new bootstrap.Modal(document.getElementById('shaterIncomingCallModal'));
     modal.show();
     shaterStartRingtone();
+    // Auto-miss if the admin does not answer within the ringing window.
+    clearTimeout(shaterRingTimer);
+    shaterRingTimer = setTimeout(async () => {
+        if (shaterCurrentCall && shaterCurrentCall.id === callId) {
+            try {
+                await db.collection('calls').doc(callId).update({
+                    status: 'missed',
+                    endReason: 'admin_no_answer',
+                    endedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                });
+            } catch (e) {}
+            shaterStopRingtone();
+            shaterHideIncomingCall();
+            shaterCurrentCall = null;
+        }
+    }, 60000);
+}
+
+/// Ends every currently ringing call (any caller) as missed with an explicit
+/// "admin suspended" reason, so the apps see why the call failed and no
+/// request stays stuck.
+async function shaterSuspendAllCalls() {
+    if (!requireDb() || !db) return;
+    try {
+        const snap = await db.collection('calls').where('status', '==', 'ringing').get();
+        const batch = db.batch();
+        snap.forEach(doc => {
+            batch.update(doc.ref, {
+                status: 'missed',
+                endReason: 'admin_suspended',
+                endedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            });
+        });
+        await batch.commit();
+        ARAalert(`تم تعليق ${snap.size} مكالمة معلقة`, 'success');
+    } catch (e) {
+        console.error('Suspend calls error:', e);
+    }
+    shaterStopRingtone();
+    shaterHideIncomingCall();
+    shaterHideActiveBar();
+    if (shaterRtcClient) {
+        try { await shaterRtcClient.leave(); } catch (e) {}
+        shaterRtcClient = null;
+    }
+    shaterCurrentCall = null;
 }
 
 function shaterHideIncomingCall() {
@@ -6202,8 +6263,12 @@ async function shaterAnswerCall() {
             if (mediaType === 'audio' && user.audioTrack) user.audioTrack.stop();
         });
         client.on('user-left', () => { shaterEndCall(true); });
-        const shaterToken = shaterBuildAgoraToken(call.channelName, shaterAdminUid());
-        await client.join(SHATER_AGORA_APP_ID, call.channelName, shaterToken, shaterAdminUid());
+        // Unique uid PER join attempt: Agora rejects a uid that is already in
+        // the channel (UID_CONFLICT) when another tab/session/retry uses the
+        // same derived-from-username value. The token must embed the same uid.
+        const shaterUid = shaterAdminUid();
+        const shaterToken = shaterBuildAgoraToken(call.channelName, shaterUid);
+        await client.join(SHATER_AGORA_APP_ID, call.channelName, shaterToken, shaterUid);
         // Users already in the channel (the app joined at ring time) may not
         // fire user-published again — subscribe to them explicitly.
         for (const user of client.remoteUsers) {
@@ -6253,11 +6318,11 @@ function shaterCloseCallDoc(callId, status) {
 }
 
 function shaterAdminUid() {
-    // Stable positive uid from the logged-in admin username.
-    const name = sessionStorage.getItem('SHATER_admin_username') || 'admin';
-    let h = 0;
-    for (let i = 0; i < name.length; i++) h = ((h << 5) - h) + name.charCodeAt(i);
-    return (h >>> 0) % 2147483647;
+    // Random positive uid generated fresh on each join attempt. The uid is
+    // purely local to a single client/join and must not be shared, so two
+    // admin tabs, repeated answers or a collision with the app's uid can
+    // never produce a UID_CONFLICT on the Agora side.
+    return 1 + Math.floor(Math.random() * 2147483646);
 }
 
 // --- Agora RTC token builder (006) ---
@@ -6524,6 +6589,7 @@ function shaterBindCallButtons() {
     document.getElementById('shaterDeclineCallBtn')?.addEventListener('click', shaterDeclineCall);
     document.getElementById('shaterEndCallBtn')?.addEventListener('click', () => shaterEndCall(false));
     document.getElementById('shaterMuteCallBtn')?.addEventListener('click', shaterToggleMute);
+    document.getElementById('shaterSuspendCallsBtn')?.addEventListener('click', shaterSuspendAllCalls);
     shaterListenForCalls();
 }
 
