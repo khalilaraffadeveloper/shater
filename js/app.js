@@ -6060,7 +6060,8 @@ window.deleteAllUnknownAccounts = async function () {
 // The app can call the dashboard directly from the first screen — the admin
 // answers right here in the browser. App ID matches shater_driver_app.
 // ============================================
-const SHATER_AGORA_APP_ID = 'ad98839b806b4ec6b8a7ab5d2ec2deaf';
+const SHATER_AGORA_APP_ID = '9f539745893d4bbb86741430ab9137db';
+const SHATER_AGORA_APP_CERT = '4f051a05587648238e6d208198db110f';
 let shaterCallListener = null;
 let shaterRtcClient = null;
 let shaterLocalMicTrack = null;
@@ -6180,7 +6181,8 @@ async function shaterAnswerCall() {
     }
     try {
         const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
-        await client.join(SHATER_AGORA_APP_ID, call.channelName, null, shaterAdminUid());
+        const shaterToken = shaterBuildAgoraToken(call.channelName, shaterAdminUid());
+        await client.join(SHATER_AGORA_APP_ID, call.channelName, shaterToken, shaterAdminUid());
         try {
             shaterLocalMicTrack = await AgoraRTC.createMicrophoneAudioTrack();
         } catch (micErr) {
@@ -6238,6 +6240,160 @@ function shaterAdminUid() {
     let h = 0;
     for (let i = 0; i < name.length; i++) h = ((h << 5) - h) + name.charCodeAt(i);
     return (h >>> 0) % 2147483647;
+}
+
+// --- Agora RTC token builder (006) ---
+// The new Agora console enables an App Certificate on every project, so the
+// SDK rejects empty tokens ("dynamic use static key"). We generate a real
+// token in the browser using the same algorithm as Agora's official
+// RtcTokenBuilder (AgoraIO/Tools, AccessToken v006) — pure JS, no deps.
+const SHATER_SHA256_K = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+];
+
+function shaterSha256(bytes) {
+    const l = bytes.length;
+    const bitLen = l * 8;
+    const extra = (56 - ((l + 1) % 64) + 64) % 64;
+    const total = l + 1 + extra + 8;
+    const buf = new Uint8Array(total);
+    buf.set(bytes);
+    buf[l] = 0x80;
+    const dv = new DataView(buf.buffer);
+    dv.setUint32(total - 8, Math.floor(bitLen / 0x100000000), false);
+    dv.setUint32(total - 4, bitLen >>> 0, false);
+    let h0 = 0x6a09e667, h1 = 0xbb67ae85, h2 = 0x3c6ef372, h3 = 0xa54ff53a;
+    let h4 = 0x510e527f, h5 = 0x9b05688c, h6 = 0x1f83d9ab, h7 = 0x5be0cd19;
+    const w = new Array(64);
+    for (let i = 0; i < total; i += 64) {
+        for (let t = 0; t < 16; t++) w[t] = dv.getUint32(i + t * 4, false);
+        for (let t = 16; t < 64; t++) {
+            const s0 = ((w[t - 15] >>> 7) | (w[t - 15] << 25)) ^ ((w[t - 15] >>> 18) | (w[t - 15] << 14)) ^ (w[t - 15] >>> 3);
+            const s1 = ((w[t - 2] >>> 17) | (w[t - 2] << 15)) ^ ((w[t - 2] >>> 19) | (w[t - 2] << 13)) ^ (w[t - 2] >>> 10);
+            w[t] = (w[t - 16] + s0 + w[t - 7] + s1) >>> 0;
+        }
+        let a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, hh = h7;
+        for (let t = 0; t < 64; t++) {
+            const S1 = ((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7));
+            const ch = (e & f) ^ (~e & g);
+            const t1 = (hh + S1 + ch + SHATER_SHA256_K[t] + w[t]) >>> 0;
+            const S0 = ((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10));
+            const maj = (a & b) ^ (a & c) ^ (b & c);
+            const t2 = (S0 + maj) >>> 0;
+            hh = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+        }
+        h0 = (h0 + a) >>> 0; h1 = (h1 + b) >>> 0; h2 = (h2 + c) >>> 0; h3 = (h3 + d) >>> 0;
+        h4 = (h4 + e) >>> 0; h5 = (h5 + f) >>> 0; h6 = (h6 + g) >>> 0; h7 = (h7 + hh) >>> 0;
+    }
+    const out = new Uint8Array(32);
+    const odv = new DataView(out.buffer);
+    odv.setUint32(0, h0, false); odv.setUint32(4, h1, false); odv.setUint32(8, h2, false); odv.setUint32(12, h3, false);
+    odv.setUint32(16, h4, false); odv.setUint32(20, h5, false); odv.setUint32(24, h6, false); odv.setUint32(28, h7, false);
+    return out;
+}
+
+function shaterHmacSha256(keyBytes, msgBytes) {
+    let key = keyBytes;
+    if (key.length > 64) key = shaterSha256(key);
+    const k = new Uint8Array(64);
+    k.set(key);
+    const inner = new Uint8Array(64 + msgBytes.length);
+    inner.set(k);
+    for (let i = 0; i < 64; i++) inner[i] ^= 0x36;
+    inner.set(msgBytes, 64);
+    const innerHash = shaterSha256(inner);
+    const outer = new Uint8Array(64 + 32);
+    outer.set(k);
+    for (let i = 0; i < 64; i++) outer[i] ^= 0x5c;
+    outer.set(innerHash, 64);
+    return shaterSha256(outer);
+}
+
+function shaterCrc32(str) {
+    let crc = 0xFFFFFFFF;
+    for (let i = 0; i < str.length; i++) {
+        const code = str.charCodeAt(i);
+        let bytes;
+        if (code < 0x80) bytes = [code];
+        else if (code < 0x800) bytes = [0xc0 | (code >> 6), 0x80 | (code & 0x3f)];
+        else bytes = [0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f)];
+        for (let bi = 0; bi < bytes.length; bi++) {
+            crc ^= bytes[bi];
+            for (let j = 0; j < 8; j++) crc = (crc & 1) ? (crc >>> 1) ^ 0xEDB88320 : crc >>> 1;
+        }
+    }
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+function shaterBytesBuilder() {
+    const chunks = [];
+    let len = 0;
+    return {
+        putUint16(v) {
+            const b = new Uint8Array(2);
+            new DataView(b.buffer).setUint16(0, v, true);
+            chunks.push(b); len += 2;
+        },
+        putUint32(v) {
+            const b = new Uint8Array(4);
+            new DataView(b.buffer).setUint32(0, v >>> 0, true);
+            chunks.push(b); len += 4;
+        },
+        putString(arr) {
+            this.putUint16(arr.length);
+            chunks.push(arr); len += arr.length;
+        },
+        build() {
+            const out = new Uint8Array(len);
+            let p = 0;
+            for (const c of chunks) { out.set(c, p); p += c.length; }
+            return out;
+        }
+    };
+}
+
+function shaterBuildAgoraToken(channelName, uid) {
+    const uidStr = uid === 0 ? '' : String(uid);
+    const now = Math.floor(Date.now() / 1000);
+    const ts = now + 86400;
+    const privilegeTs = now + 86400;
+    const salt = (Math.random() * 0xFFFFFFFF) >>> 0;
+
+    const mb = shaterBytesBuilder();
+    mb.putUint32(salt);
+    mb.putUint32(ts);
+    mb.putUint16(4); // join + publish audio/video/data
+    mb.putUint16(1); mb.putUint32(privilegeTs);
+    mb.putUint16(2); mb.putUint32(privilegeTs);
+    mb.putUint16(3); mb.putUint32(privilegeTs);
+    mb.putUint16(4); mb.putUint32(privilegeTs);
+    const m = mb.build();
+
+    const enc = (s) => new TextEncoder().encode(s);
+    const parts = [enc(SHATER_AGORA_APP_ID), enc(channelName), enc(uidStr)];
+    const toSign = new Uint8Array(parts[0].length + parts[1].length + parts[2].length + m.length);
+    let p = 0;
+    for (const part of parts) { toSign.set(part, p); p += part.length; }
+    toSign.set(m, p);
+    const signature = shaterHmacSha256(enc(SHATER_AGORA_APP_CERT), toSign);
+
+    const cb = shaterBytesBuilder();
+    cb.putString(signature);
+    cb.putUint32(shaterCrc32(channelName));
+    cb.putUint32(shaterCrc32(uidStr));
+    cb.putString(m);
+    const content = cb.build();
+
+    let bin = '';
+    for (let i = 0; i < content.length; i++) bin += String.fromCharCode(content[i]);
+    return '006' + SHATER_AGORA_APP_ID + btoa(bin);
 }
 
 function shaterShowActiveBar() {
