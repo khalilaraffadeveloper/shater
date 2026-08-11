@@ -6067,46 +6067,45 @@ let shaterRtcClient = null;
 let shaterLocalMicTrack = null;
 let shaterRemoteAudioTrack = null;
 let shaterCurrentCall = null; // { id, callerName, callerRole, channelName }
-let shaterRingtoneTimer = null;
 let shaterRingtoneAudio = null;
 let shaterMicMuted = false;
 
-// --- Ringtone via Web Audio API (no external file needed) ---
+// --- Ringtone: project's own soft notification tone, looped ---
 function shaterStartRingtone() {
     shaterStopRingtone();
     try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const gain = ctx.createGain();
-        gain.connect(ctx.destination);
-        gain.gain.value = 0.25;
-        const notes = [880, 1174.66]; // A5 -> D6 (classic ring)
-        let step = 0;
-        shaterRingtoneTimer = setInterval(() => {
-            const osc = ctx.createOscillator();
-            osc.type = 'sine';
-            osc.frequency.value = notes[step % notes.length];
-            osc.connect(gain);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.45);
-            step++;
-        }, 500);
-        shaterRingtoneAudio = ctx;
+        shaterRingtoneAudio = new Audio('js/soundreality_notification_tone.mp3');
+        shaterRingtoneAudio.loop = true;
+        shaterRingtoneAudio.volume = 0.8;
+        const p = shaterRingtoneAudio.play();
+        if (p && p.catch) p.catch(e => console.warn('Ringtone play error:', e));
     } catch (e) { console.warn('Ringtone error:', e); }
 }
 function shaterStopRingtone() {
-    if (shaterRingtoneTimer) { clearInterval(shaterRingtoneTimer); shaterRingtoneTimer = null; }
-    try { if (shaterRingtoneAudio) shaterRingtoneAudio.close(); } catch (e) {}
-    shaterRingtoneAudio = null;
+    if (shaterRingtoneAudio) {
+        try { shaterRingtoneAudio.pause(); } catch (e) {}
+        try { shaterRingtoneAudio.src = ''; } catch (e) {}
+        shaterRingtoneAudio = null;
+    }
 }
 
 // --- Incoming call modal ---
 function shaterShowIncomingCall(callId, data) {
-    if (shaterCurrentCall) return; // already in a call
+    if (shaterCurrentCall) {
+        // Defensive: old app builds created the call doc with an empty
+        // channelName first and filled it right after — keep the ring but
+        // adopt the channel name once it arrives.
+        if (!shaterCurrentCall.channelName && data.channelName) {
+            shaterCurrentCall.channelName = data.channelName;
+        }
+        return;
+    }
+    if (!data.channelName) return; // wait for the channel name to be written
     shaterCurrentCall = {
         id: callId,
         callerName: data.callerName || 'ضيف',
         callerRole: data.callerRole || 'guest',
-        channelName: data.channelName || '',
+        channelName: data.channelName,
     };
     document.getElementById('shaterIncomingCallInfo').textContent =
         `${shaterCurrentCall.callerName} — ${shaterCurrentCall.callerRole === 'guest' ? 'زائر' : shaterCurrentCall.callerRole}`;
@@ -6167,6 +6166,10 @@ async function shaterAnswerCall() {
     const call = shaterCurrentCall;
     if (!call) {
         ARAalert('تعذر بدء المكالمة: لا توجد مكالمة واردة', 'error');
+        return;
+    }
+    if (!call.channelName) {
+        ARAalert('المكالمة لم تكتمل بياناتها بعد — أعد المحاولة خلال ثانية', 'warning');
         return;
     }
     try {
