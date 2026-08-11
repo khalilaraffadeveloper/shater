@@ -6163,7 +6163,8 @@ function shaterWaitForAgora() {
 
 // --- Answer: join the Agora channel and publish the mic ---
 async function shaterAnswerCall() {
-    if (!shaterCurrentCall) {
+    const call = shaterCurrentCall;
+    if (!call) {
         ARAalert('تعذر بدء المكالمة: لا توجد مكالمة واردة', 'error');
         return;
     }
@@ -6172,12 +6173,27 @@ async function shaterAnswerCall() {
     } catch (err) {
         console.error('Agora SDK load error:', err);
         ARAalert('تعذر تحميل Agora SDK — تأكد من الاتصال بالإنترنت', 'error');
+        shaterCloseCallDoc(call.id, 'ended');
+        shaterHideIncomingCall();
+        shaterCurrentCall = null;
         return;
     }
     try {
         const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
-        await client.join(SHATER_AGORA_APP_ID, shaterCurrentCall.channelName, null, shaterAdminUid());
-        shaterLocalMicTrack = await AgoraRTC.createMicrophoneAudioTrack();
+        await client.join(SHATER_AGORA_APP_ID, call.channelName, null, shaterAdminUid());
+        try {
+            shaterLocalMicTrack = await AgoraRTC.createMicrophoneAudioTrack();
+        } catch (micErr) {
+            // Usually the page is opened via file:// where browsers block the
+            // microphone. Tell the admin how to fix it and close the call.
+            console.error('Mic error:', micErr);
+            try { await client.leave(); } catch (e) {}
+            shaterCloseCallDoc(call.id, 'ended');
+            shaterHideIncomingCall();
+            shaterCurrentCall = null;
+            ARAalert('المتصفح منع الميكروفون. شغّل اللوحة عبر http://localhost أو رابط https مفعّل، واسمح بالميكروفون ثم أعد المحاولة.', 'error');
+            return;
+        }
         await client.publish([shaterLocalMicTrack]);
         shaterRtcClient = client;
         client.on('user-published', async (user, mediaType) => {
@@ -6191,7 +6207,7 @@ async function shaterAnswerCall() {
         });
         client.on('user-left', () => { shaterEndCall(true); });
         // Mark the call as ongoing so the app sees it was answered.
-        await db.collection('calls').doc(shaterCurrentCall.id).update({
+        await db.collection('calls').doc(call.id).update({
             status: 'ongoing',
             startedAt: firebase.firestore.FieldValue.serverTimestamp(),
         });
@@ -6200,9 +6216,20 @@ async function shaterAnswerCall() {
     } catch (err) {
         console.error('Answer call error:', err);
         ARAalert('خطأ في الرد على المكالمة: ' + (err.message || ''), 'error');
+        shaterCloseCallDoc(call.id, 'ended');
         shaterHideIncomingCall();
         shaterCurrentCall = null;
     }
+}
+
+function shaterCloseCallDoc(callId, status) {
+    if (!callId || !db) return;
+    try {
+        db.collection('calls').doc(callId).update({
+            status: status,
+            endedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+    } catch (e) {}
 }
 
 function shaterAdminUid() {
