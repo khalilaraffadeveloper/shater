@@ -2123,8 +2123,28 @@
         </div>
     </div>
 
-    <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.22.0.js"></script>
-    <script src="js/app.js?v=20260811a"></script>
+    <!-- Agora Web SDK: bundled locally first (works offline / from the same
+         folder), then the official CDN, then a jsDelivr mirror as fallback.
+         window.AgoraRTC is defined by whichever source loads first. -->
+    <script>
+        (function () {
+            var sources = [
+                'js/AgoraRTC_N-4.22.0.js',
+                'https://download.agora.io/sdk/release/AgoraRTC_N-4.22.0.js',
+                'https://cdn.jsdelivr.net/npm/agora-rtc-sdk-ng@4.22.0/AgoraRTC_N-production.js'
+            ];
+            function load(i) {
+                if (window.AgoraRTC || i >= sources.length) return;
+                var s = document.createElement('script');
+                s.src = sources[i];
+                s.onload = function () { window.__agoraSdkLoaded = true; };
+                s.onerror = function () { load(i + 1); };
+                document.head.appendChild(s);
+            }
+            load(0);
+        })();
+    </script>
+    <script src="js/app.js?v=20260811b"></script>
 </body>
 </html>
 

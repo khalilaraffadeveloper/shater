@@ -6121,10 +6121,57 @@ function shaterHideIncomingCall() {
     if (modal) modal.hide();
 }
 
+// --- Agora SDK loading helper ---
+// The SDK is bundled locally + mirrored on two CDNs (dashboard.html loads it
+// automatically). This helper waits for it and, as a last resort, loads it
+// dynamically so answering never fails just because the script was still
+// downloading or the primary source was blocked.
+function shaterLoadAgora(srcs, i) {
+    return new Promise(function (resolve, reject) {
+        if (i >= srcs.length) { reject(new Error('agora_not_loaded')); return; }
+        if (window.AgoraRTC) { resolve(); return; }
+        var s = document.createElement('script');
+        s.src = srcs[i];
+        s.onload = function () { window.__agoraSdkLoaded = true; resolve(); };
+        s.onerror = function () {
+            shaterLoadAgora(srcs, i + 1).then(resolve, reject);
+        };
+        document.head.appendChild(s);
+    });
+}
+
+function shaterWaitForAgora() {
+    return new Promise(function (resolve, reject) {
+        if (window.AgoraRTC) { resolve(); return; }
+        var tries = 0;
+        var iv = setInterval(function () {
+            tries++;
+            if (window.AgoraRTC) {
+                clearInterval(iv);
+                resolve();
+            } else if (tries > 50) { // ~10s
+                clearInterval(iv);
+                shaterLoadAgora([
+                    'js/AgoraRTC_N-4.22.0.js',
+                    'https://download.agora.io/sdk/release/AgoraRTC_N-4.22.0.js',
+                    'https://cdn.jsdelivr.net/npm/agora-rtc-sdk-ng@4.22.0/AgoraRTC_N-production.js'
+                ], 0).then(resolve, reject);
+            }
+        }, 200);
+    });
+}
+
 // --- Answer: join the Agora channel and publish the mic ---
 async function shaterAnswerCall() {
-    if (!shaterCurrentCall || !window.AgoraRTC) {
-        ARAalert('تعذر بدء المكالمة: تأكد من تحميل Agora SDK', 'error');
+    if (!shaterCurrentCall) {
+        ARAalert('تعذر بدء المكالمة: لا توجد مكالمة واردة', 'error');
+        return;
+    }
+    try {
+        await shaterWaitForAgora();
+    } catch (err) {
+        console.error('Agora SDK load error:', err);
+        ARAalert('تعذر تحميل Agora SDK — تأكد من الاتصال بالإنترنت', 'error');
         return;
     }
     try {
