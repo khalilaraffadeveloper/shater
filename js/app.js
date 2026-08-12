@@ -1604,7 +1604,8 @@ function initRealtimeListeners() {
             if (mobileCount) mobileCount.textContent = onlineIds.size;
         });
 
-    db.collection('customers').onSnapshot(snapshot => {
+    db.collection('customers').where('lastSeen', '>=', new Date(Date.now() - 10 * 60 * 1000))
+        .onSnapshot(snapshot => {
         const seenIds = new Set();
         const now = Date.now();
         snapshot.forEach(doc => {
@@ -5135,19 +5136,23 @@ function openWhatsApp(phone, name) {
 // INIT
 // ============================================
 function initDashboard() {
+    // The map tiles get priority: the heavy Firestore listeners and stats are
+    // started a moment later so the live map appears quickly on slow links.
     initMap();
     bindMapSearch();
-    loadCommission();
-    loadCustomerCommission();
-    loadRidesCleanupSettings();
-    loadStats();
-    initRealtimeListeners();
-    initEventWatchers();
-    initDesktopNotifications();
     applyRoleVisibility();
-    checkDailyRidesCleanup();
-    setInterval(loadStats, 60000);
-    addNotifLog('system', 'تم تشغيل لوحة التحكم');
+    setTimeout(() => {
+        loadCommission();
+        loadCustomerCommission();
+        loadRidesCleanupSettings();
+        loadStats();
+        initRealtimeListeners();
+        initEventWatchers();
+        initDesktopNotifications();
+        checkDailyRidesCleanup();
+        setInterval(loadStats, 60000);
+        addNotifLog('system', 'تم تشغيل لوحة التحكم');
+    }, 1200);
 }
 
 initDashboard();
