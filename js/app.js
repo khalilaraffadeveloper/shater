@@ -372,6 +372,7 @@ function showToast(message, type) {
 // ============================================
 let map = null;
 let driversMap = {};
+let customersMap = {};
 let pickupMarker = null;
 let dropoffMarker = null;
 let pickupCoords = null;
@@ -1570,17 +1571,28 @@ function initRealtimeListeners() {
                 const id = doc.id;
                 if (!data.lat || !data.lng) return;
                 onlineIds.add(id);
+                const isDelivery = data.role === 'delivery' || data.vehicleType === 'bike';
+                const vehicleLabel = isDelivery ? 'توصيل' : 'سيارة';
                 if (driversMap[id]) {
                     driversMap[id].marker.setLatLng([data.lat, data.lng]);
+                    if (driversMap[id].isDelivery !== isDelivery) {
+                        const icon = L.divIcon({
+                            className: 'driver-marker-wrapper',
+                            html: `<div style="background:${isDelivery ? '#6A1B9A' : '#0B1849'};border:3px solid white;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,0.3);color:white;font-size:18px;">${isDelivery ? '🛵' : '🚗'}</div>`,
+                            iconSize: [36, 36], iconAnchor: [18, 18]
+                        });
+                        driversMap[id].marker.setIcon(icon);
+                        driversMap[id].isDelivery = isDelivery;
+                    }
                 } else {
                     const icon = L.divIcon({
                         className: 'driver-marker-wrapper',
-                        html: '<div style="background:#0B1849;border:3px solid white;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,0.3);color:white;font-size:18px;">🛵</div>',
+                        html: `<div style="background:${isDelivery ? '#6A1B9A' : '#0B1849'};border:3px solid white;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,0.3);color:white;font-size:18px;">${isDelivery ? '🛵' : '🚗'}</div>`,
                         iconSize: [36, 36], iconAnchor: [18, 18]
                     });
                     const marker = L.marker([data.lat, data.lng], { icon }).addTo(map)
-                        .bindPopup(`<div style="font-family:Cairo;text-align:center;direction:rtl;"><strong>${data.name || 'سائق'}</strong><br><small>سيارة | رصيد: ${data.credit || 0} MRU</small><br><span style="color:#2E7D32;">● متاح</span></div>`);
-                    driversMap[id] = { marker, data };
+                        .bindPopup(`<div style="font-family:Cairo;text-align:center;direction:rtl;"><strong>${data.name || 'سائق'}</strong><br><small>${vehicleLabel} | رصيد: ${data.credit || 0} MRU</small><br><span style="color:#2E7D32;">● متاح</span></div>`);
+                    driversMap[id] = { marker, data, isDelivery };
                 }
             });
             Object.keys(driversMap).forEach(id => {
@@ -1591,6 +1603,35 @@ function initRealtimeListeners() {
             const mobileCount = document.querySelector('.onlineCount-mobile');
             if (mobileCount) mobileCount.textContent = onlineIds.size;
         });
+
+    db.collection('customers').onSnapshot(snapshot => {
+        const seenIds = new Set();
+        const now = Date.now();
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const id = doc.id;
+            if (!data.lat || !data.lng) return;
+            const lastSeen = data.lastSeen && data.lastSeen.toDate
+                ? data.lastSeen.toDate().getTime() : now;
+            if (now - lastSeen > 5 * 60 * 1000) return;
+            seenIds.add(id);
+            if (customersMap[id]) {
+                customersMap[id].marker.setLatLng([data.lat, data.lng]);
+            } else {
+                const icon = L.divIcon({
+                    className: 'customer-marker-wrapper',
+                    html: '<div style="background:#D4A843;border:3px solid white;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,0.3);color:white;font-size:17px;">🧑</div>',
+                    iconSize: [34, 34], iconAnchor: [17, 17]
+                });
+                const marker = L.marker([data.lat, data.lng], { icon }).addTo(map)
+                    .bindPopup(`<div style="font-family:Cairo;text-align:center;direction:rtl;"><strong>${data.name || 'زبون'}</strong><br><small>${data.phone || ''} | رصيد: ${data.credit || 0} MRU</small></div>`);
+                customersMap[id] = { marker, data };
+            }
+        });
+        Object.keys(customersMap).forEach(id => {
+            if (!seenIds.has(id)) { map.removeLayer(customersMap[id].marker); delete customersMap[id]; }
+        });
+    });
 }
 
 // ============================================

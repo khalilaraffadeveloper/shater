@@ -187,6 +187,15 @@ body.stats-collapsed .map-wrapper { height: calc(100vh - 84px); }
 #mapSearchResults { background: #fff; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.18); margin-top: 6px; overflow: hidden; max-height: 240px; overflow-y: auto; }
 .map-search-result { padding: 9px 14px; cursor: pointer; border-bottom: 1px solid #f0f0f0; font-size: 13px; color: #333; }
 .map-search-result:hover { background: #f0f4ff; color: var(--k-blue); }
+
+/* ============ MAP LEGEND ============ */
+.map-legend { position: absolute; bottom: 18px; right: 12px; z-index: 1000; background: rgba(255,255,255,0.95); border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.18); padding: 8px 12px; font-family: 'Cairo', sans-serif; direction: rtl; }
+.map-legend-title { font-size: 11px; font-weight: 800; color: #555; margin-bottom: 4px; border-bottom: 1px solid #eee; padding-bottom: 4px; text-align: center; }
+.map-legend-item { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #333; padding: 2px 0; }
+.legend-dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.25); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
+.map-dark .map-legend { background: rgba(18,20,28,0.95); }
+.map-dark .map-legend-title { color: #ccc; border-color: #333; }
+.map-dark .map-legend-item { color: #ddd; }
 .map-search-empty { padding: 10px 14px; color: #888; font-size: 13px; }
 
 /* ============ MAP DARK MODE ============ */
