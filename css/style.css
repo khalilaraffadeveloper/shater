@@ -188,6 +188,16 @@ body.stats-collapsed .map-wrapper { height: calc(100vh - 84px); }
 .map-search-result { padding: 9px 14px; cursor: pointer; border-bottom: 1px solid #f0f0f0; font-size: 13px; color: #333; }
 .map-search-result:hover { background: #f0f4ff; color: var(--k-blue); }
 
+/* ============ MAP STYLE (black/white/dirt) ============ */
+#map.bw-tiles .leaflet-tile {
+    filter: grayscale(1) sepia(0.22) contrast(1.35) brightness(1.03);
+}
+#map.bw-tiles .leaflet-marker-icon,
+#map.bw-tiles .leaflet-div-icon,
+#map.bw-tiles .leaflet-control-container {
+    filter: none;
+}
+
 /* ============ MAP LEGEND ============ */
 .map-legend { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(255,255,255,0.95); border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.18); padding: 6px 14px; font-family: 'Cairo', sans-serif; direction: rtl; display: flex; align-items: center; gap: 14px; }
 .map-legend-title { font-size: 11px; font-weight: 800; color: #555; white-space: nowrap; }

@@ -451,6 +451,13 @@ function initMap() {
         'الأقمار الصناعية (Esri)': esriImageryLayer
     }, null, { position: 'topright' }).addTo(map);
 
+    // Street layers are rendered in a high-contrast black/white/dirt style
+    // (see .bw-tiles in style.css); the satellite layer stays natural.
+    map.on('baselayerchange', (e) => {
+        map.getContainer().classList.toggle('bw-tiles', e.layer !== esriImageryLayer);
+    });
+    map.getContainer().classList.add('bw-tiles');
+
     L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
 
     map.on('click', (e) => {
