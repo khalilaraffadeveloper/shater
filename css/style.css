@@ -189,13 +189,10 @@ body.stats-collapsed .map-wrapper { height: calc(100vh - 84px); }
 .map-search-result:hover { background: #f0f4ff; color: var(--k-blue); }
 
 /* ============ MAP STYLE (black/white/dirt) ============ */
-#map.bw-tiles .leaflet-tile {
+/* Filter is applied to the street-tiles pane (not to individual tiles or the
+   map container) so rendering is reliable and the satellite stays natural. */
+#map .leaflet-bwPane {
     filter: grayscale(1) sepia(0.22) contrast(1.35) brightness(1.03);
-}
-#map.bw-tiles .leaflet-marker-icon,
-#map.bw-tiles .leaflet-div-icon,
-#map.bw-tiles .leaflet-control-container {
-    filter: none;
 }
 
 /* ============ MAP LEGEND ============ */

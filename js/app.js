@@ -433,11 +433,15 @@ function initMap() {
     map = L.map('map', { zoomControl: false }).setView([18.0735, -15.9582], 13);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+    // Street layers share a dedicated pane styled in high-contrast
+    // black/white/dirt (see .leaflet-bwPane in style.css); the satellite
+    // layer keeps the default (colorful) pane.
+    map.createPane('bwPane').style.zIndex = 200;
     const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap', maxZoom: 19
+        attribution: '© OpenStreetMap', maxZoom: 19, pane: 'bwPane'
     });
     const esriStreetsLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles © Esri', maxZoom: 19
+        attribution: 'Tiles © Esri', maxZoom: 19, pane: 'bwPane'
     });
     const esriImageryLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Imagery © Esri', maxZoom: 19
@@ -450,13 +454,6 @@ function initMap() {
         'الخريطة العادية (OSM)': osmLayer,
         'الأقمار الصناعية (Esri)': esriImageryLayer
     }, null, { position: 'topright' }).addTo(map);
-
-    // Street layers are rendered in a high-contrast black/white/dirt style
-    // (see .bw-tiles in style.css); the satellite layer stays natural.
-    map.on('baselayerchange', (e) => {
-        map.getContainer().classList.toggle('bw-tiles', e.layer !== esriImageryLayer);
-    });
-    map.getContainer().classList.add('bw-tiles');
 
     L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
 
@@ -837,6 +834,7 @@ function navigateToPage(page) {
     if (page === 'driver-registrations') loadDriverRegistrations();
     if (page === 'delivery-drivers') loadDeliveryDrivers();
     if (page === 'reports') loadReports();
+    if (page === 'map') setTimeout(() => { if (map) map.invalidateSize(); }, 80);
 }
 
 document.querySelectorAll('.sidebar-link').forEach(item => {
@@ -5148,6 +5146,9 @@ function initDashboard() {
     initMap();
     bindMapSearch();
     applyRoleVisibility();
+    // Ensure the map re-measures after the layout settles so it always fills
+    // the whole container (prevents a partially-rendered map).
+    setTimeout(() => { if (map) map.invalidateSize(); }, 350);
     setTimeout(() => {
         loadCommission();
         loadCustomerCommission();
