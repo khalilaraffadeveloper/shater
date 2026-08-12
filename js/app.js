@@ -487,7 +487,7 @@ let searchResultMarker = null;
 let NOUAKCHOTT_PLACES = null;
 function loadNouakchottPlaces() {
     if (NOUAKCHOTT_PLACES) return Promise.resolve(NOUAKCHOTT_PLACES);
-    return fetch('js/nouakchott_places.json?v=20260812g')
+    return fetch('js/nouakchott_places.json?v=20260812h')
         .then(r => r.json())
         .then(d => { NOUAKCHOTT_PLACES = d; return d; })
         .catch(() => { NOUAKCHOTT_PLACES = []; return NOUAKCHOTT_PLACES; });
@@ -496,7 +496,7 @@ function loadNouakchottPlaces() {
 /* Uploads the dataset to Firestore so the mobile app fetches it from the
    database (light APK, always up-to-date) instead of bundling it. Runs
    automatically from the dashboard when the local version is newer. */
-const NOUAKCHOTT_PLACES_VERSION = 20260812;
+const NOUAKCHOTT_PLACES_VERSION = 20260813;
 async function syncNouakchottPlaces() {
     try {
         const places = await loadNouakchottPlaces();
@@ -519,17 +519,39 @@ function bindMapSearch() {
 
     const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-    function renderResults(items, getLoc) {
+    function renderResults(items) {
         resultsBox.innerHTML = items.map((r, i) =>
             '<div class="map-search-result" data-i="' + i + '">' + escapeHtml(r.label) + '</div>').join('');
         resultsBox.querySelectorAll('.map-search-result').forEach(el => {
             el.onclick = () => {
                 const r = items[parseInt(el.dataset.i)];
-                const loc = getLoc(r);
+                const loc = [r.lat, r.lon];
                 map.flyTo(loc, 16);
                 if (searchResultMarker) map.removeLayer(searchResultMarker);
                 searchResultMarker = L.marker(loc).addTo(map)
                     .bindPopup(escapeHtml(r.label)).openPopup();
+                // Feed the dispatch form: first pick = pickup, second = dropoff.
+                const setLabel = (el, html) => { const l = el.closest('.mb-3').querySelector('label'); if (l) l.innerHTML = html; };
+                if (!pickupCoords) {
+                    setPickupPoint(r.lat, r.lon);
+                    const a = document.getElementById('pickupAddress');
+                    if (a) a.value = r.name;
+                    mapClickMode = 'dropoff';
+                    const pc = document.getElementById('pickupCoords');
+                    const dc = document.getElementById('dropoffCoords');
+                    if (pc) pc.placeholder = '✓ تم تحديد الانطلاق';
+                    if (dc) dc.placeholder = 'نقرة ثانية = الوجهة';
+                    setLabel(pc, '<span class="text-success fw-bold">✓ نقطة الانطلاق</span>');
+                    setLabel(dc, '<span class="text-danger fw-bold">نقطة الوجهة (انقر أو ابحث)</span>');
+                } else {
+                    setDropoffPoint(r.lat, r.lon);
+                    const d = document.getElementById('dropoffAddress');
+                    if (d) d.value = r.name;
+                    mapClickMode = 'pickup';
+                    setLabel(document.getElementById('dropoffCoords'), '<span class="text-success fw-bold">✓ نقطة الوجهة</span>');
+                    setLabel(document.getElementById('pickupCoords'), '<span class="text-muted fw-bold">نقطة الانطلاق</span>');
+                }
+                updateDispatchBtn();
                 resultsBox.innerHTML = '';
                 input.value = '';
             };
@@ -540,6 +562,7 @@ function bindMapSearch() {
         const q = input.value.trim();
         if (!q) { resultsBox.innerHTML = ''; return; }
         const nq = q.toLowerCase();
+        const isArabic = /[\u0600-\u06FF]/.test(q);
         try {
             const places = await loadNouakchottPlaces();
             const hits = [];
@@ -551,22 +574,28 @@ function bindMapSearch() {
                     || (p.cf || '').toLowerCase().includes(nq)
                     || (p.ce || '').toLowerCase().includes(nq);
                 if (inN || inA || inF || inC) {
-                    hits.push({ label: (p.a || p.f || p.n) + ' <span class="ms-cat">' + (p.c || '') + '</span>', lat: p.lat, lon: p.lon });
+                    const name = isArabic ? (p.a || p.n) : (p.f || p.n);
+                    const cat = isArabic ? p.c : p.cf;
+                    hits.push({ label: name + ' <span class="ms-cat">' + (cat || '') + '</span>', name: name, lat: p.lat, lon: p.lon });
                     if (hits.length >= 12) break;
                 }
             }
-            if (hits.length) { renderResults(hits, (r) => [r.lat, r.lon]); return; }
+            if (hits.length) { renderResults(hits); return; }
 
             const res = await fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) +
                 '&format=json&limit=6&accept-language=ar');
             const data = await res.json();
             if (!data.length) { resultsBox.innerHTML = '<div class="map-search-empty">لا توجد نتائج</div>'; return; }
-            renderResults(data.map(r => ({ label: r.display_name, lat: parseFloat(r.lat), lon: parseFloat(r.lon) })), (r) => [r.lat, r.lon]);
+            renderResults(data.map(r => ({ label: r.display_name, name: r.display_name, lat: parseFloat(r.lat), lon: parseFloat(r.lon) })));
         } catch (e) { console.error('Map search error:', e); }
     }
 
     btn.addEventListener('click', doSearch);
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+    input.addEventListener('input', () => {
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(doSearch, 350);
+    });
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.map-search')) resultsBox.innerHTML = '';
     });
