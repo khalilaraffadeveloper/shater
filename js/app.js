@@ -487,10 +487,28 @@ let searchResultMarker = null;
 let NOUAKCHOTT_PLACES = null;
 function loadNouakchottPlaces() {
     if (NOUAKCHOTT_PLACES) return Promise.resolve(NOUAKCHOTT_PLACES);
-    return fetch('js/nouakchott_places.json?v=20260812f')
+    return fetch('js/nouakchott_places.json?v=20260812g')
         .then(r => r.json())
         .then(d => { NOUAKCHOTT_PLACES = d; return d; })
         .catch(() => { NOUAKCHOTT_PLACES = []; return NOUAKCHOTT_PLACES; });
+}
+
+/* Uploads the dataset to Firestore so the mobile app fetches it from the
+   database (light APK, always up-to-date) instead of bundling it. Runs
+   automatically from the dashboard when the local version is newer. */
+const NOUAKCHOTT_PLACES_VERSION = 20260812;
+async function syncNouakchottPlaces() {
+    try {
+        const places = await loadNouakchottPlaces();
+        if (!places || !places.length) return;
+        const ref = db.collection('settings').doc('nouakchott_places');
+        const snap = await ref.get();
+        const stored = snap.exists ? (snap.data().updatedAt || 0) : 0;
+        if (NOUAKCHOTT_PLACES_VERSION > stored) {
+            await ref.set({ data: places, updatedAt: NOUAKCHOTT_PLACES_VERSION }, { merge: true });
+            console.log('[places] uploaded ' + places.length + ' places to Firestore');
+        }
+    } catch (e) { console.error('[places] sync failed:', e); }
 }
 
 function bindMapSearch() {
@@ -528,9 +546,12 @@ function bindMapSearch() {
             for (const p of places) {
                 const inN = (p.n || '').toLowerCase().includes(nq);
                 const inA = p.a ? p.a.toLowerCase().includes(nq) : false;
-                const inC = (p.c || '').toLowerCase().includes(nq);
-                if (inN || inA || inC) {
-                    hits.push({ label: (p.a || p.n) + ' <span class="ms-cat">' + (p.c || '') + '</span>', lat: p.lat, lon: p.lon });
+                const inF = p.f ? p.f.toLowerCase().includes(nq) : false;
+                const inC = (p.c || '').toLowerCase().includes(nq)
+                    || (p.cf || '').toLowerCase().includes(nq)
+                    || (p.ce || '').toLowerCase().includes(nq);
+                if (inN || inA || inF || inC) {
+                    hits.push({ label: (p.a || p.f || p.n) + ' <span class="ms-cat">' + (p.c || '') + '</span>', lat: p.lat, lon: p.lon });
                     if (hits.length >= 12) break;
                 }
             }
@@ -5181,6 +5202,7 @@ function initDashboard() {
     // the whole container (prevents a partially-rendered map).
     setTimeout(() => { if (map) map.invalidateSize(); }, 350);
     setTimeout(() => {
+        syncNouakchottPlaces();
         loadCommission();
         loadCustomerCommission();
         loadRidesCleanupSettings();
