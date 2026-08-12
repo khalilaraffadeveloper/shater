@@ -1,4 +1,4 @@
-﻿// ============================================
+﻿﻿// ============================================
 // SHATER ADMIN DASHBOARD - app.js (Bootstrap 5)
 // Two-click map: pickup + dropoff, auto-fare
 // ============================================
@@ -557,40 +557,57 @@ function bindMapSearch() {
     const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const setLabel = (el, html) => { const l = el.closest('.mb-3').querySelector('label'); if (l) l.innerHTML = html; };
 
+    let activeIndex = 0;
+    let lastResults = [];
+
+    function selectResult(r) {
+        const loc = [r.lat, r.lon];
+        map.flyTo(loc, 16);
+        if (searchResultMarker) map.removeLayer(searchResultMarker);
+        searchResultMarker = L.marker(loc).addTo(map)
+            .bindPopup('<div style="text-align:center"><strong>' + escapeHtml(r.name) + '</strong>' + (r.cat ? '<br><small style="color:#777">' + escapeHtml(r.cat) + '</small>' : '') + '</div>').openPopup();
+        // Feed the dispatch form: first pick = pickup, second = dropoff.
+        if (!pickupCoords) {
+            setPickupPoint(r.lat, r.lon);
+            const a = document.getElementById('pickupAddress');
+            if (a) a.value = r.name;
+            mapClickMode = 'dropoff';
+            const pc = document.getElementById('pickupCoords');
+            const dc = document.getElementById('dropoffCoords');
+            if (pc) pc.placeholder = '✓ تم تحديد الانطلاق';
+            if (dc) dc.placeholder = 'نقرة ثانية = الوجهة';
+            setLabel(pc, '<span class="text-success fw-bold">✓ نقطة الانطلاق</span>');
+            setLabel(dc, '<span class="text-danger fw-bold">نقطة الوجهة (انقر أو ابحث)</span>');
+        } else {
+            setDropoffPoint(r.lat, r.lon);
+            const d = document.getElementById('dropoffAddress');
+            if (d) d.value = r.name;
+            mapClickMode = 'pickup';
+            setLabel(document.getElementById('dropoffCoords'), '<span class="text-success fw-bold">✓ نقطة الوجهة</span>');
+            setLabel(document.getElementById('pickupCoords'), '<span class="text-muted fw-bold">نقطة الانطلاق</span>');
+        }
+        updateDispatchBtn();
+        resultsBox.innerHTML = '';
+        input.value = '';
+    }
+
+    function highlightActive() {
+        resultsBox.querySelectorAll('.map-search-result').forEach((el, i) => {
+            el.classList.toggle('map-search-result-active', i === activeIndex);
+            if (i === activeIndex) el.scrollIntoView({ block: 'nearest' });
+        });
+    }
+
     function renderResults(items) {
+        lastResults = items;
+        activeIndex = 0;
         resultsBox.innerHTML = items.map((r, i) =>
-            '<div class="map-search-result" data-i="' + i + '">' + escapeHtml(r.name) + (r.cat ? ' <span class="ms-cat">' + escapeHtml(r.cat) + '</span>' : '') + '</div>').join('');
+            '<div class="map-search-result' + (i === 0 ? ' map-search-result-active' : '') + '" data-i="' + i + '">' + escapeHtml(r.name) + (r.cat ? ' <span class="ms-cat">' + escapeHtml(r.cat) + '</span>' : '') + '</div>').join('');
         resultsBox.querySelectorAll('.map-search-result').forEach(el => {
-            el.onclick = () => {
-                const r = items[parseInt(el.dataset.i)];
-                const loc = [r.lat, r.lon];
-                map.flyTo(loc, 16);
-                if (searchResultMarker) map.removeLayer(searchResultMarker);
-                searchResultMarker = L.marker(loc).addTo(map)
-                    .bindPopup('<div style="text-align:center"><strong>' + escapeHtml(r.name) + '</strong>' + (r.cat ? '<br><small style="color:#777">' + escapeHtml(r.cat) + '</small>' : '') + '</div>').openPopup();
-                // Feed the dispatch form: first pick = pickup, second = dropoff.
-                if (!pickupCoords) {
-                    setPickupPoint(r.lat, r.lon);
-                    const a = document.getElementById('pickupAddress');
-                    if (a) a.value = r.name;
-                    mapClickMode = 'dropoff';
-                    const pc = document.getElementById('pickupCoords');
-                    const dc = document.getElementById('dropoffCoords');
-                    if (pc) pc.placeholder = '✓ تم تحديد الانطلاق';
-                    if (dc) dc.placeholder = 'نقرة ثانية = الوجهة';
-                    setLabel(pc, '<span class="text-success fw-bold">✓ نقطة الانطلاق</span>');
-                    setLabel(dc, '<span class="text-danger fw-bold">نقطة الوجهة (انقر أو ابحث)</span>');
-                } else {
-                    setDropoffPoint(r.lat, r.lon);
-                    const d = document.getElementById('dropoffAddress');
-                    if (d) d.value = r.name;
-                    mapClickMode = 'pickup';
-                    setLabel(document.getElementById('dropoffCoords'), '<span class="text-success fw-bold">✓ نقطة الوجهة</span>');
-                    setLabel(document.getElementById('pickupCoords'), '<span class="text-muted fw-bold">نقطة الانطلاق</span>');
-                }
-                updateDispatchBtn();
-                resultsBox.innerHTML = '';
-                input.value = '';
+            el.onclick = () => { activeIndex = parseInt(el.dataset.i); selectResult(lastResults[activeIndex]); };
+            el.onmouseenter = () => {
+                activeIndex = parseInt(el.dataset.i);
+                highlightActive();
             };
         });
     }
@@ -617,7 +634,7 @@ function bindMapSearch() {
                 hits.push({ name: name, cat: cat, lat: p.lat, lon: p.lon, score: score, nameLen: name.length });
             }
             hits.sort((x, y) => (y.score - x.score) || (x.nameLen - y.nameLen));
-            if (hits.length) { renderResults(hits.slice(0, 40)); return; }
+            if (hits.length) { renderResults(hits.slice(0, 12)); return; }
 
             const res = await fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) +
                 '&format=json&limit=6&accept-language=ar&countrycodes=mr' +
@@ -631,11 +648,26 @@ function bindMapSearch() {
         } catch (e) { console.error('Map search error:', e); }
     }
 
+    let searchDebounce = null;
     btn.addEventListener('click', doSearch);
-    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+    input.addEventListener('keydown', (e) => {
+        const results = resultsBox.querySelectorAll('.map-search-result');
+        if (e.key === 'ArrowDown' && results.length) {
+            e.preventDefault();
+            activeIndex = Math.min(activeIndex + 1, results.length - 1);
+            highlightActive();
+        } else if (e.key === 'ArrowUp' && results.length) {
+            e.preventDefault();
+            activeIndex = Math.max(activeIndex - 1, 0);
+            highlightActive();
+        } else if (e.key === 'Enter' && results.length) {
+            e.preventDefault();
+            selectResult(lastResults[activeIndex]);
+        }
+    });
     input.addEventListener('input', () => {
         clearTimeout(searchDebounce);
-        searchDebounce = setTimeout(doSearch, 100);
+        searchDebounce = setTimeout(doSearch, 60);
     });
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.map-search')) resultsBox.innerHTML = '';
