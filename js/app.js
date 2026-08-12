@@ -375,6 +375,7 @@ let driversMap = {};
 let customersMap = {};
 let pickupMarker = null;
 let dropoffMarker = null;
+let routeLine = null;
 let pickupCoords = null;
 let dropoffCoords = null;
 let radiusCircle = null;
@@ -487,7 +488,7 @@ let searchResultMarker = null;
 let NOUAKCHOTT_PLACES = null;
 function loadNouakchottPlaces() {
     if (NOUAKCHOTT_PLACES) return Promise.resolve(NOUAKCHOTT_PLACES);
-    return fetch('js/nouakchott_places.json?v=20260812j')
+    return fetch('js/nouakchott_places.json?v=20260812l')
         .then(r => r.json())
         .then(d => { NOUAKCHOTT_PLACES = d; return d; })
         .catch(() => { NOUAKCHOTT_PLACES = []; return NOUAKCHOTT_PLACES; });
@@ -496,7 +497,7 @@ function loadNouakchottPlaces() {
 /* Uploads the dataset to Firestore so the mobile app fetches it from the
    database (light APK, always up-to-date) instead of bundling it. Runs
    automatically from the dashboard when the local version is newer. */
-const NOUAKCHOTT_PLACES_VERSION = 20260815;
+const NOUAKCHOTT_PLACES_VERSION = 20260816;
 async function syncNouakchottPlaces() {
     try {
         const places = await loadNouakchottPlaces();
@@ -730,6 +731,7 @@ function setPickupPoint(lat, lng) {
     document.getElementById('pickupCoords').value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
     updateRadiusCircle();
     updateDistanceInfo();
+    updateRouteLine();
 }
 
 function setDropoffPoint(lat, lng) {
@@ -743,6 +745,7 @@ function setDropoffPoint(lat, lng) {
     dropoffMarker = L.marker([lat, lng], { icon }).addTo(map);
     document.getElementById('dropoffCoords').value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
     updateDistanceInfo();
+    updateRouteLine();
 }
 
 function updateRadiusCircle() {
@@ -767,6 +770,16 @@ function updateDistanceInfo() {
         infoDiv.style.display = 'block';
     } else {
         infoDiv.style.display = 'none';
+    }
+}
+
+function updateRouteLine() {
+    if (routeLine) map.removeLayer(routeLine);
+    routeLine = null;
+    if (pickupCoords && dropoffCoords) {
+        routeLine = L.polyline([[pickupCoords.lat, pickupCoords.lng], [dropoffCoords.lat, dropoffCoords.lng]], {
+            color: '#D4A843', weight: 3, dashArray: '6, 6', opacity: 0.9
+        }).addTo(map);
     }
 }
 
@@ -1069,7 +1082,8 @@ function resetDispatchForm() {
     if (pickupMarker) map.removeLayer(pickupMarker);
     if (dropoffMarker) map.removeLayer(dropoffMarker);
     if (radiusCircle) map.removeLayer(radiusCircle);
-    pickupMarker = null; dropoffMarker = null; pickupCoords = null; dropoffCoords = null; radiusCircle = null;
+    if (routeLine) map.removeLayer(routeLine);
+    pickupMarker = null; dropoffMarker = null; pickupCoords = null; dropoffCoords = null; radiusCircle = null; routeLine = null;
     mapClickMode = 'pickup';
     ['passengerName', 'passengerPhone', 'pickupAddress', 'dropoffAddress', 'pickupCoords', 'dropoffCoords'].forEach(id => {
         const el = document.getElementById(id);
