@@ -487,7 +487,7 @@ let searchResultMarker = null;
 let NOUAKCHOTT_PLACES = null;
 function loadNouakchottPlaces() {
     if (NOUAKCHOTT_PLACES) return Promise.resolve(NOUAKCHOTT_PLACES);
-    return fetch('js/nouakchott_places.json?v=20260812h')
+    return fetch('js/nouakchott_places.json?v=20260812i')
         .then(r => r.json())
         .then(d => { NOUAKCHOTT_PLACES = d; return d; })
         .catch(() => { NOUAKCHOTT_PLACES = []; return NOUAKCHOTT_PLACES; });
@@ -496,7 +496,7 @@ function loadNouakchottPlaces() {
 /* Uploads the dataset to Firestore so the mobile app fetches it from the
    database (light APK, always up-to-date) instead of bundling it. Runs
    automatically from the dashboard when the local version is newer. */
-const NOUAKCHOTT_PLACES_VERSION = 20260813;
+const NOUAKCHOTT_PLACES_VERSION = 20260814;
 async function syncNouakchottPlaces() {
     try {
         const places = await loadNouakchottPlaces();
@@ -511,6 +511,41 @@ async function syncNouakchottPlaces() {
     } catch (e) { console.error('[places] sync failed:', e); }
 }
 
+/* Arabic/Unicode normalization for fuzzy prefix search. */
+function normAr(s) {
+    return (s || '').toLowerCase()
+        .replace(/[\u064B-\u065F\u0670\u0671]/g, '')
+        .replace(/[أإآٱ]/g, 'ا')
+        .replace(/ى/g, 'ي')
+        .replace(/ة/g, 'ه')
+        .replace(/ؤ/g, 'و')
+        .replace(/ئ/g, 'ي')
+        .replace(/[«»"'().,-]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+/* Scores a place against the typed query: whole-name prefix strongly,
+   then each typed token against the name and the category (so typing
+   "بقالة" surfaces all groceries, and "بقالة عباد" ranks its stores). */
+function scorePlace(p, tokens, normQuery) {
+    const names = [p.n, p.a, p.f].filter(Boolean).map(normAr).join(' ');
+    const cats = [p.c, p.cf, p.ce].filter(Boolean).map(normAr).join(' ');
+    let score = 0;
+    if (normQuery.length) {
+        if (names.startsWith(normQuery)) score += 40;
+        else if (names.includes(normQuery)) score += 25;
+    }
+    for (const t of tokens) {
+        if (!t.length) continue;
+        if (names.startsWith(t)) score += 14;
+        else if (names.includes(t)) score += 8;
+        if (cats.startsWith(t)) score += 10;
+        else if (cats.includes(t)) score += 6;
+    }
+    return score;
+}
+
 function bindMapSearch() {
     const input = document.getElementById('mapSearchInput');
     const btn = document.getElementById('mapSearchBtn');
@@ -518,6 +553,7 @@ function bindMapSearch() {
     if (!input || !btn || !resultsBox) return;
 
     const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const setLabel = (el, html) => { const l = el.closest('.mb-3').querySelector('label'); if (l) l.innerHTML = html; };
 
     function renderResults(items) {
         resultsBox.innerHTML = items.map((r, i) =>
@@ -531,7 +567,6 @@ function bindMapSearch() {
                 searchResultMarker = L.marker(loc).addTo(map)
                     .bindPopup(escapeHtml(r.label)).openPopup();
                 // Feed the dispatch form: first pick = pickup, second = dropoff.
-                const setLabel = (el, html) => { const l = el.closest('.mb-3').querySelector('label'); if (l) l.innerHTML = html; };
                 if (!pickupCoords) {
                     setPickupPoint(r.lat, r.lon);
                     const a = document.getElementById('pickupAddress');
@@ -558,35 +593,39 @@ function bindMapSearch() {
         });
     }
 
+    /* Strict Nouakchott bounds (lat/lon) — nothing outside is ever accepted. */
+    const NK_BOUNDS = { minLat: 17.85, maxLat: 18.20, minLng: -16.15, maxLng: -15.70 };
+    const inNouakchott = (lat, lon) => lat >= NK_BOUNDS.minLat && lat <= NK_BOUNDS.maxLat &&
+        lon >= NK_BOUNDS.minLng && lon <= NK_BOUNDS.maxLng;
+
     async function doSearch() {
         const q = input.value.trim();
         if (!q) { resultsBox.innerHTML = ''; return; }
-        const nq = q.toLowerCase();
+        const normQuery = normAr(q);
+        const tokens = normQuery.split(' ').filter(Boolean);
         const isArabic = /[\u0600-\u06FF]/.test(q);
         try {
             const places = await loadNouakchottPlaces();
             const hits = [];
             for (const p of places) {
-                const inN = (p.n || '').toLowerCase().includes(nq);
-                const inA = p.a ? p.a.toLowerCase().includes(nq) : false;
-                const inF = p.f ? p.f.toLowerCase().includes(nq) : false;
-                const inC = (p.c || '').toLowerCase().includes(nq)
-                    || (p.cf || '').toLowerCase().includes(nq)
-                    || (p.ce || '').toLowerCase().includes(nq);
-                if (inN || inA || inF || inC) {
-                    const name = isArabic ? (p.a || p.n) : (p.f || p.n);
-                    const cat = isArabic ? p.c : p.cf;
-                    hits.push({ label: name + ' <span class="ms-cat">' + (cat || '') + '</span>', name: name, lat: p.lat, lon: p.lon });
-                    if (hits.length >= 12) break;
-                }
+                const score = scorePlace(p, tokens, normQuery);
+                if (!score) continue;
+                const name = isArabic ? (p.a || p.n) : (p.f || p.n);
+                const cat = isArabic ? p.c : p.cf;
+                hits.push({ label: name + ' <span class="ms-cat">' + (cat || '') + '</span>', name: name, lat: p.lat, lon: p.lon, score: score, nameLen: name.length });
             }
-            if (hits.length) { renderResults(hits); return; }
+            hits.sort((x, y) => (y.score - x.score) || (x.nameLen - y.nameLen));
+            if (hits.length) { renderResults(hits.slice(0, 40)); return; }
 
             const res = await fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) +
-                '&format=json&limit=6&accept-language=ar');
+                '&format=json&limit=6&accept-language=ar&countrycodes=mr' +
+                '&viewbox=-16.15,18.20,-15.70,17.85&bounded=1');
             const data = await res.json();
-            if (!data.length) { resultsBox.innerHTML = '<div class="map-search-empty">لا توجد نتائج</div>'; return; }
-            renderResults(data.map(r => ({ label: r.display_name, name: r.display_name, lat: parseFloat(r.lat), lon: parseFloat(r.lon) })));
+            const filtered = data
+                .filter(r => inNouakchott(parseFloat(r.lat), parseFloat(r.lon)))
+                .map(r => ({ label: r.display_name, name: r.display_name, lat: parseFloat(r.lat), lon: parseFloat(r.lon) }));
+            if (!filtered.length) { resultsBox.innerHTML = '<div class="map-search-empty">لا توجد نتائج في نواكشوط</div>'; return; }
+            renderResults(filtered);
         } catch (e) { console.error('Map search error:', e); }
     }
 
@@ -594,13 +633,12 @@ function bindMapSearch() {
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
     input.addEventListener('input', () => {
         clearTimeout(searchDebounce);
-        searchDebounce = setTimeout(doSearch, 350);
+        searchDebounce = setTimeout(doSearch, 200);
     });
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.map-search')) resultsBox.innerHTML = '';
     });
 }
-
 document.getElementById('darkModeBtn').addEventListener('click', () => {
     document.body.classList.toggle('map-dark');
     const icon = document.querySelector('#darkModeBtn i');
