@@ -482,6 +482,17 @@ function initMap() {
 
 let searchResultMarker = null;
 
+/* Local Nouakchott places dataset (from OpenStreetMap/Overpass, ~3500 places).
+   Searched first because Nominatim coverage in Nouakchott is weak. */
+let NOUAKCHOTT_PLACES = null;
+function loadNouakchottPlaces() {
+    if (NOUAKCHOTT_PLACES) return Promise.resolve(NOUAKCHOTT_PLACES);
+    return fetch('js/nouakchott_places.json?v=20260812f')
+        .then(r => r.json())
+        .then(d => { NOUAKCHOTT_PLACES = d; return d; })
+        .catch(() => { NOUAKCHOTT_PLACES = []; return NOUAKCHOTT_PLACES; });
+}
+
 function bindMapSearch() {
     const input = document.getElementById('mapSearchInput');
     const btn = document.getElementById('mapSearchBtn');
@@ -490,27 +501,46 @@ function bindMapSearch() {
 
     const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+    function renderResults(items, getLoc) {
+        resultsBox.innerHTML = items.map((r, i) =>
+            '<div class="map-search-result" data-i="' + i + '">' + escapeHtml(r.label) + '</div>').join('');
+        resultsBox.querySelectorAll('.map-search-result').forEach(el => {
+            el.onclick = () => {
+                const r = items[parseInt(el.dataset.i)];
+                const loc = getLoc(r);
+                map.flyTo(loc, 16);
+                if (searchResultMarker) map.removeLayer(searchResultMarker);
+                searchResultMarker = L.marker(loc).addTo(map)
+                    .bindPopup(escapeHtml(r.label)).openPopup();
+                resultsBox.innerHTML = '';
+                input.value = '';
+            };
+        });
+    }
+
     async function doSearch() {
         const q = input.value.trim();
         if (!q) { resultsBox.innerHTML = ''; return; }
+        const nq = q.toLowerCase();
         try {
+            const places = await loadNouakchottPlaces();
+            const hits = [];
+            for (const p of places) {
+                const inN = (p.n || '').toLowerCase().includes(nq);
+                const inA = p.a ? p.a.toLowerCase().includes(nq) : false;
+                const inC = (p.c || '').toLowerCase().includes(nq);
+                if (inN || inA || inC) {
+                    hits.push({ label: (p.a || p.n) + ' <span class="ms-cat">' + (p.c || '') + '</span>', lat: p.lat, lon: p.lon });
+                    if (hits.length >= 12) break;
+                }
+            }
+            if (hits.length) { renderResults(hits, (r) => [r.lat, r.lon]); return; }
+
             const res = await fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) +
                 '&format=json&limit=6&accept-language=ar');
             const data = await res.json();
             if (!data.length) { resultsBox.innerHTML = '<div class="map-search-empty">لا توجد نتائج</div>'; return; }
-            resultsBox.innerHTML = data.map((r, i) =>
-                '<div class="map-search-result" data-i="' + i + '">' + escapeHtml(r.display_name) + '</div>').join('');
-            resultsBox.querySelectorAll('.map-search-result').forEach(el => {
-                el.onclick = () => {
-                    const r = data[parseInt(el.dataset.i)];
-                    map.flyTo([parseFloat(r.lat), parseFloat(r.lon)], 16);
-                    if (searchResultMarker) map.removeLayer(searchResultMarker);
-                    searchResultMarker = L.marker([parseFloat(r.lat), parseFloat(r.lon)]).addTo(map)
-                        .bindPopup(escapeHtml(r.display_name)).openPopup();
-                    resultsBox.innerHTML = '';
-                    input.value = '';
-                };
-            });
+            renderResults(data.map(r => ({ label: r.display_name, lat: parseFloat(r.lat), lon: parseFloat(r.lon) })), (r) => [r.lat, r.lon]);
         } catch (e) { console.error('Map search error:', e); }
     }
 
@@ -5145,6 +5175,7 @@ function initDashboard() {
     // started a moment later so the live map appears quickly on slow links.
     initMap();
     bindMapSearch();
+    loadNouakchottPlaces();
     applyRoleVisibility();
     // Ensure the map re-measures after the layout settles so it always fills
     // the whole container (prevents a partially-rendered map).
