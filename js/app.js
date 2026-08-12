@@ -506,7 +506,9 @@ async function syncNouakchottPlaces() {
         const snap = await ref.get();
         const stored = snap.exists ? (snap.data().updatedAt || 0) : 0;
         if (NOUAKCHOTT_PLACES_VERSION > stored) {
-            await ref.set({ data: places, updatedAt: NOUAKCHOTT_PLACES_VERSION }, { merge: true });
+            // Stored as a single JSON string: a Firestore array of 4400+ maps
+            // would exceed the 1MiB document limit.
+            await ref.set({ data: JSON.stringify(places), updatedAt: NOUAKCHOTT_PLACES_VERSION }, { merge: true });
             console.log('[places] uploaded ' + places.length + ' places to Firestore');
         }
     } catch (e) { console.error('[places] sync failed:', e); }
