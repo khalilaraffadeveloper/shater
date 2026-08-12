@@ -1,4 +1,4 @@
-﻿﻿// ============================================
+﻿// ============================================
 // SHATER ADMIN DASHBOARD - app.js (Bootstrap 5)
 // Two-click map: pickup + dropoff, auto-fare
 // ============================================
@@ -488,7 +488,7 @@ let searchResultMarker = null;
 let NOUAKCHOTT_PLACES = null;
 function loadNouakchottPlaces() {
     if (NOUAKCHOTT_PLACES) return Promise.resolve(NOUAKCHOTT_PLACES);
-    return fetch('js/nouakchott_places.json?v=20260812m')
+    return fetch('js/nouakchott_places.json?v=20260812n')
         .then(r => r.json())
         .then(d => { NOUAKCHOTT_PLACES = d; return d; })
         .catch(() => { NOUAKCHOTT_PLACES = []; return NOUAKCHOTT_PLACES; });
@@ -497,7 +497,7 @@ function loadNouakchottPlaces() {
 /* Uploads the dataset to Firestore so the mobile app fetches it from the
    database (light APK, always up-to-date) instead of bundling it. Runs
    automatically from the dashboard when the local version is newer. */
-const NOUAKCHOTT_PLACES_VERSION = 20260817;
+const NOUAKCHOTT_PLACES_VERSION = 20260818;
 async function syncNouakchottPlaces() {
     try {
         const places = await loadNouakchottPlaces();
