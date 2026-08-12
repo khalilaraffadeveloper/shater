@@ -487,7 +487,7 @@ let searchResultMarker = null;
 let NOUAKCHOTT_PLACES = null;
 function loadNouakchottPlaces() {
     if (NOUAKCHOTT_PLACES) return Promise.resolve(NOUAKCHOTT_PLACES);
-    return fetch('js/nouakchott_places.json?v=20260812i')
+    return fetch('js/nouakchott_places.json?v=20260812j')
         .then(r => r.json())
         .then(d => { NOUAKCHOTT_PLACES = d; return d; })
         .catch(() => { NOUAKCHOTT_PLACES = []; return NOUAKCHOTT_PLACES; });
@@ -496,7 +496,7 @@ function loadNouakchottPlaces() {
 /* Uploads the dataset to Firestore so the mobile app fetches it from the
    database (light APK, always up-to-date) instead of bundling it. Runs
    automatically from the dashboard when the local version is newer. */
-const NOUAKCHOTT_PLACES_VERSION = 20260814;
+const NOUAKCHOTT_PLACES_VERSION = 20260815;
 async function syncNouakchottPlaces() {
     try {
         const places = await loadNouakchottPlaces();
@@ -536,8 +536,10 @@ function scorePlace(p, tokens, normQuery) {
         if (names.startsWith(normQuery)) score += 40;
         else if (names.includes(normQuery)) score += 25;
     }
+    const nameWords = names.split(' ');
     for (const t of tokens) {
         if (!t.length) continue;
+        if (nameWords.includes(t)) score += 20;
         if (names.startsWith(t)) score += 14;
         else if (names.includes(t)) score += 8;
         if (cats.startsWith(t)) score += 10;
@@ -557,7 +559,7 @@ function bindMapSearch() {
 
     function renderResults(items) {
         resultsBox.innerHTML = items.map((r, i) =>
-            '<div class="map-search-result" data-i="' + i + '">' + escapeHtml(r.label) + '</div>').join('');
+            '<div class="map-search-result" data-i="' + i + '">' + escapeHtml(r.name) + (r.cat ? ' <span class="ms-cat">' + escapeHtml(r.cat) + '</span>' : '') + '</div>').join('');
         resultsBox.querySelectorAll('.map-search-result').forEach(el => {
             el.onclick = () => {
                 const r = items[parseInt(el.dataset.i)];
@@ -565,7 +567,7 @@ function bindMapSearch() {
                 map.flyTo(loc, 16);
                 if (searchResultMarker) map.removeLayer(searchResultMarker);
                 searchResultMarker = L.marker(loc).addTo(map)
-                    .bindPopup(escapeHtml(r.label)).openPopup();
+                    .bindPopup('<div style="text-align:center"><strong>' + escapeHtml(r.name) + '</strong>' + (r.cat ? '<br><small style="color:#777">' + escapeHtml(r.cat) + '</small>' : '') + '</div>').openPopup();
                 // Feed the dispatch form: first pick = pickup, second = dropoff.
                 if (!pickupCoords) {
                     setPickupPoint(r.lat, r.lon);
@@ -612,7 +614,7 @@ function bindMapSearch() {
                 if (!score) continue;
                 const name = isArabic ? (p.a || p.n) : (p.f || p.n);
                 const cat = isArabic ? p.c : p.cf;
-                hits.push({ label: name + ' <span class="ms-cat">' + (cat || '') + '</span>', name: name, lat: p.lat, lon: p.lon, score: score, nameLen: name.length });
+                hits.push({ name: name, cat: cat, lat: p.lat, lon: p.lon, score: score, nameLen: name.length });
             }
             hits.sort((x, y) => (y.score - x.score) || (x.nameLen - y.nameLen));
             if (hits.length) { renderResults(hits.slice(0, 40)); return; }
@@ -623,7 +625,7 @@ function bindMapSearch() {
             const data = await res.json();
             const filtered = data
                 .filter(r => inNouakchott(parseFloat(r.lat), parseFloat(r.lon)))
-                .map(r => ({ label: r.display_name, name: r.display_name, lat: parseFloat(r.lat), lon: parseFloat(r.lon) }));
+                .map(r => ({ name: r.display_name, cat: '', lat: parseFloat(r.lat), lon: parseFloat(r.lon) }));
             if (!filtered.length) { resultsBox.innerHTML = '<div class="map-search-empty">لا توجد نتائج في نواكشوط</div>'; return; }
             renderResults(filtered);
         } catch (e) { console.error('Map search error:', e); }
@@ -633,7 +635,7 @@ function bindMapSearch() {
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
     input.addEventListener('input', () => {
         clearTimeout(searchDebounce);
-        searchDebounce = setTimeout(doSearch, 200);
+        searchDebounce = setTimeout(doSearch, 100);
     });
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.map-search')) resultsBox.innerHTML = '';
