@@ -310,13 +310,6 @@
                     <div class="map-legend-item"><span class="legend-dot" style="background:#D4A843;">🧑</span> زبون</div>
                     <div class="map-legend-item"><span class="legend-dot" style="background:#E65100;">🎫</span> رحلة نشطة</div>
                 </div>
-                <div class="map-search">
-                    <div class="map-search-bar">
-                        <input type="text" id="mapSearchInput" placeholder="ابحث عن مكان أو عنوان..." autocomplete="off">
-                        <button id="mapSearchBtn" title="بحث"><i class="bi bi-search"></i></button>
-                    </div>
-                    <div id="mapSearchResults"></div>
-                </div>
             </div>
         </div>
 
@@ -882,15 +875,6 @@
                                             <div class="col-3"><label class="form-label small mb-1">توصيل ×</label><input type="number" min="0" step="0.1" class="form-control form-control-sm" id="delMult"></div>
                                         </div>
                                     </div>
-                                    <div class="col-md-6">
-                                        <h6 class="fw-bold text-dark-blue mb-2"><i class="bi bi-stopwatch-fill me-1"></i>المؤقت (رحلة مفتوحة)</h6>
-                                        <div class="row g-2">
-                                            <div class="col-3"><label class="form-label small mb-1">بدء المؤقت</label><input type="number" min="0" class="form-control form-control-sm" id="timerStart"></div>
-                                            <div class="col-3"><label class="form-label small mb-1">أوقية/كم</label><input type="number" min="0" class="form-control form-control-sm" id="timerPerKm"></div>
-                                            <div class="col-3"><label class="form-label small mb-1">خطوة /5د</label><input type="number" min="0" class="form-control form-control-sm" id="timerStep"></div>
-                                            <div class="col-3"><label class="form-label small mb-1">دقائق الخطوة</label><input type="number" min="1" class="form-control form-control-sm" id="timerStepMin"></div>
-                                        </div>
-                                    </div>
                                 </div>
                                 <button class="btn btn-dark-blue text-white fw-bold mt-3" onclick="savePricingConfig()"><i class="bi bi-check-lg me-1"></i>حفظ إعدادات التسعير</button>
                                 <button class="btn btn-outline-secondary fw-bold mt-3 ms-2" onclick="resetPricingConfig()"><i class="bi bi-arrow-counterclockwise me-1"></i>استعادة الأسعار الافتراضية</button>
@@ -951,25 +935,6 @@
                             </div>
                         </div>
                     </div>
-                    <!-- DAILY RIDES CLEANUP -->
-                    <div class="col-12 admin-only">
-                        <div class="card shadow-sm border-0">
-                            <div class="card-header bg-white border-bottom">
-                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-calendar2-week text-gold me-2"></i>سجل الرحلات اليومي</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="form-check form-switch mb-2">
-                                    <input class="form-check-input" type="checkbox" id="ridesCleanupAuto" checked>
-                                    <label class="form-check-label fw-bold" for="ridesCleanupAuto">المسح التلقائي كل 24 ساعة</label>
-                                </div>
-                                <p class="text-muted small mb-3">عند تفعيله، يُمسح سجل الرحلات تلقائيًا كل 24 ساعة لتبدأ كل يوم بسجل جديد. آخر مسح: <span id="ridesCleanupLastRun" class="fw-bold text-dark-blue">-</span></p>
-                                <button class="btn btn-outline-danger fw-bold" onclick="clearRidesNow()">
-                                    <i class="bi bi-trash me-1"></i>مسح سجل الرحلات الآن
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
                     <div class="col-12 admin-only">
                         <div class="card shadow-sm border-0 border-danger">
                             <div class="card-header bg-white border-bottom border-danger">
@@ -1935,85 +1900,6 @@
         </div>
     </div>
 
-    <!-- DISPATCH PANEL (Custom - RTL safe) -->
-    <div class="dispatch-panel-overlay d-none" id="dispatchOverlay" onclick="toggleDispatchPanel()"></div>
-    <div class="dispatch-panel" id="dispatchPanel">
-        <div class="dispatch-panel-header bg-dark-blue text-white d-flex align-items-center justify-content-between p-3">
-            <h5 class="fw-bold mb-0"><i class="bi bi-car-front me-2"></i>إرسال طلب رحلة</h5>
-            <button type="button" class="btn-close btn-close-white" onclick="toggleDispatchPanel()"></button>
-        </div>
-        <div class="dispatch-panel-body p-3">
-            <div class="mb-3">
-                <label class="form-label fw-bold">اسم الزبون</label>
-                <input type="text" class="form-control" id="passengerName" placeholder="أدخل اسم الزبون">
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-bold">رقم هاتف الزبون</label>
-                <input type="tel" class="form-control" id="passengerPhone" placeholder="رقم الهاتف (اختياري)">
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-bold">نقطة الانطلاق</label>
-                <div class="input-group">
-                    <input type="text" class="form-control" id="pickupCoords" placeholder="انقر على الخريطة" readonly tabindex="-1">
-                    <button class="btn btn-outline-danger" id="clearPickup" tabindex="-1"><i class="bi bi-trash"></i></button>
-                </div>
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-bold">عنوان الانطلاق</label>
-                <input type="text" class="form-control" id="pickupAddress" placeholder="أدخل العنوان">
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-bold">نصف قطر البحث: <span class="text-gold fw-bold" id="radiusValue">3 كم</span></label>
-                <input type="range" class="form-range" id="searchRadius" min="1" max="10" value="3" tabindex="-1">
-                <small class="text-muted">تحديد نطاق السائقين القريبين فقط</small>
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-bold">نقطة الوجهة</label>
-                <div class="input-group">
-                    <input type="text" class="form-control" id="dropoffCoords" placeholder="نقرة ثانية = الوجهة" readonly tabindex="-1">
-                    <button class="btn btn-outline-danger" id="clearDropoff" tabindex="-1"><i class="bi bi-trash"></i></button>
-                </div>
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-bold">عنوان الوجهة</label>
-                <input type="text" class="form-control" id="dropoffAddress" placeholder="أدخل عنوان الوجهة">
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-bold">نوع الرحلة</label>
-                <div class="btn-group w-100" role="group">
-                    <input type="radio" class="btn-check" name="rideType" id="rideTypeFixed" value="fixed" checked>
-                    <label class="btn btn-outline-dark-blue" for="rideTypeFixed"><i class="bi bi-sign-turn-right-fill me-1"></i>محددة (بالكيلومتر)</label>
-                    <input type="radio" class="btn-check" name="rideType" id="rideTypeOpen" value="open">
-                    <label class="btn btn-outline-dark-blue" for="rideTypeOpen"><i class="bi bi-stopwatch-fill me-1"></i>مفتوحة (بالوقت)</label>
-                </div>
-                <small class="text-muted d-block mt-1" id="rideTypeHint">تُحسب من المسافة بالشرائح: 70 حتى 1كم، حتى 435 عند 30كم</small>
-            </div>
-            <div class="mb-3" id="distanceInfo" style="display:none;">
-                <div class="bg-light rounded-3 p-3 text-center">
-                    <small class="text-muted">المسافة</small>
-                    <div class="fs-5 fw-bold text-dark-blue" id="realDistance">0 كم</div>
-                    <small class="text-muted">السعر التلقائي</small>
-                    <div class="fs-5 fw-bold text-gold" id="autoFare">0 MRU</div>
-                </div>
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-bold">سعر الرحلة (MRU)</label>
-                <input type="text" inputmode="numeric" class="form-control fw-bold text-center" id="fareInput" value="70" dir="ltr" placeholder="أدخل السعر" tabindex="-1">
-                <small class="text-muted" id="fareInputHint">السعر التلقائي للرحلة المحددة. يمكنك تعديله يدوياً.</small>
-            </div>
-            <button class="btn btn-gold text-white fw-bold w-100 py-3" id="dispatchBtn" disabled>
-                <i class="bi bi-send-fill me-2"></i>إرسال تنبيه للسائقين
-            </button>
-            <div class="text-center mt-2 fw-semibold" id="dispatchStatus"></div>
-        </div>
-    </div>
-
-    <!-- FLOATING DISPATCH TOGGLE BUTTON (always visible) -->
-    <button class="dispatch-fab" id="dispatchFab" onclick="toggleDispatchPanel()">
-        <i class="bi bi-send-fill"></i>
-        <span class="d-none d-sm-inline ms-2">إرسال رحلة</span>
-    </button>
-
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -2079,44 +1965,6 @@
             @keyframes shtFadeIn { from { opacity: 0; } to { opacity: 1; } }
             @keyframes shtScaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         </style>
-    </div>
-
-    <!-- DELIVERY PRICE MODAL -->
-    <div class="modal fade" id="deliveryPriceModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h6 class="modal-title fw-bold text-dark-blue"><i class="bi bi-cash-coin me-2 text-gold"></i>إرسال سعر التوصيلة</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-2"><strong>الزبون:</strong> <span id="deliveryPriceCustomer"></span></div>
-                    <div class="mb-2"><strong>مستلم:</strong> <span id="deliveryPriceReceiver"></span></div>
-                    <div class="mb-2"><strong>المرسل (الحي):</strong> <span id="deliveryPriceSender"></span></div>
-                    <div class="mb-2"><strong>المستلم (الحي):</strong> <span id="deliveryPriceReceiverDistrict"></span></div>
-                    <div class="mb-2"><strong>نقطة الانطلاق:</strong> <span id="deliveryPricePickup"></span></div>
-                    <div class="mb-2"><strong>نقطة الوجهة:</strong> <span id="deliveryPriceDropoff"></span></div>
-                    <div class="mb-2"><strong>ملاحظات:</strong> <span id="deliveryPriceNotes"></span></div>
-                    <div class="mb-3 d-none" id="deliveryPriceVoiceGroup">
-                        <div class="d-flex align-items-center gap-2 p-2 border rounded-3 bg-light">
-                            <i class="bi bi-mic-fill text-primary"></i>
-                            <span class="small fw-bold">رسالة صوتية من الزبون:</span>
-                            <button type="button" class="btn btn-sm btn-primary ms-auto" id="deliveryPriceVoiceBtn" onclick="toggleDeliveryPriceVoice()"><i class="bi bi-play-fill"></i> تشغيل</button>
-                            <audio id="deliveryPriceVoice" preload="auto" style="display:none;"></audio>
-                        </div>
-                    </div>
-                    <div class="mb-3"><a href="#" target="_blank" rel="noopener" id="deliveryPriceMapLink" class="btn btn-sm btn-outline-primary"><i class="bi bi-geo-alt me-1"></i>فتح المسار في خرائط جوجل</a></div>
-                    <input type="hidden" id="deliveryPriceId">
-                    <label class="form-label fw-bold">السعر التقديري (MRU)</label>
-                    <input type="number" class="form-control" id="deliveryPriceValue" placeholder="مثال: 150">
-                    <div class="form-text">يستطيع المشرف الآن رؤية نقطتي الانطلاق والوجهة لتقدير السعر بدقة</div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
-                    <button type="button" class="btn btn-gold text-white fw-bold" id="confirmDeliveryPriceBtn">إرسال السعر</button>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- CUSTOM MODAL -->
@@ -2224,7 +2072,7 @@
             load(0);
         })();
     </script>
-    <script src="js/app.js?v=20260813d"></script>
+    <script src="js/app.js?v=20260813e"></script>
 </body>
 </html>
 

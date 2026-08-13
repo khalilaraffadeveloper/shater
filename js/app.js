@@ -373,13 +373,6 @@ function showToast(message, type) {
 let map = null;
 let driversMap = {};
 let customersMap = {};
-let pickupMarker = null;
-let dropoffMarker = null;
-let routeLine = null;
-let pickupCoords = null;
-let dropoffCoords = null;
-let radiusCircle = null;
-let mapClickMode = 'pickup'; // 'pickup' or 'dropoff'
 let allDrivers = [];
 let allCustomers = [];
 let allRides = [];
@@ -404,8 +397,7 @@ function defaultPricing() {
     return {
         car: { maxKm: [1, 3, 5, 8, 12, 20, 30], prices: [70, 95, 125, 165, 225, 310, 435], perExtraKm: 19 },
         delivery: { maxKm: [1, 3, 5, 8, 12, 20], prices: [85, 105, 125, 155, 195, 245], perExtraKm: 20, max: 250 },
-        night: { startHour: 0, endHour: 5, carMultiplier: 1.5, deliveryMultiplier: 1.3 },
-        timer: { start: 75, perKm: 10, step: 15, stepMinutes: 5 }
+        night: { startHour: 0, endHour: 5, carMultiplier: 1.5, deliveryMultiplier: 1.3 }
     };
 }
 let pricingCfg = defaultPricing();
@@ -448,21 +440,7 @@ function calculateFare(distanceKm) {
     return applyNight(Math.round(bandPrice(distanceKm, pricingCfg.car.maxKm, pricingCfg.car.prices, pricingCfg.car.perExtraKm)));
 }
 
-function calculateOpenFare(minutes, km) {
-    const t = pricingCfg.timer;
-    if (!minutes || minutes <= 0) return applyNight(t.start);
-    let price = t.start + (km || 0) * t.perKm;
-    const seconds = minutes * 60;
-    if (seconds > 60) {
-        const blocks = Math.ceil((seconds - 60) / (t.stepMinutes * 60));
-        price += blocks * t.step;
-    }
-    return applyNight(Math.round(price));
-}
-
 function roundFare5(n) { return Math.round(n / 5) * 5; }
-
-function formatRideType(t) { return t === 'open' ? 'مفتوحة (بالوقت)' : 'محددة (بالكيلومتر)'; }
 
 // ============================================
 // PRICING SETTINGS (إعدادات التسعير من صفحة الإعدادات)
@@ -481,10 +459,6 @@ function fillPricingSettingsForm() {
     set('nightEnd', c.night.endHour);
     set('carMult', c.night.carMultiplier);
     set('delMult', c.night.deliveryMultiplier);
-    set('timerStart', c.timer.start);
-    set('timerPerKm', c.timer.perKm);
-    set('timerStep', c.timer.step);
-    set('timerStepMin', c.timer.stepMinutes);
 }
 
 window.savePricingConfig = async function () {
@@ -512,12 +486,6 @@ window.savePricingConfig = async function () {
                 endHour: num('nightEnd', 5),
                 carMultiplier: num('carMult', 1.5),
                 deliveryMultiplier: num('delMult', 1.3)
-            },
-            timer: {
-                start: num('timerStart', 75),
-                perKm: num('timerPerKm', 10),
-                step: num('timerStep', 15),
-                stepMinutes: num('timerStepMin', 5)
             }
         }
     };
@@ -525,8 +493,6 @@ window.savePricingConfig = async function () {
         await db.collection('settings').doc('app_config').set(cfg, { merge: true });
         pricingCfg = cfg.pricing;
         ARAalert('تم حفظ إعدادات التسعير بنجاح', 'success');
-        updateRideTypeUI();
-        if (pickupCoords && dropoffCoords) updateDistanceInfo();
     } catch (e) {
         ARAalert('خطأ: ' + e.message, 'error');
     }
@@ -543,8 +509,6 @@ window.resetPricingConfig = async function () {
         );
         pricingCfg = defaultPricing();
         fillPricingSettingsForm();
-        updateRideTypeUI();
-        if (pickupCoords && dropoffCoords) updateDistanceInfo();
         ARAalert('تمت استعادة الأسعار الافتراضية بنجاح', 'success');
     } catch (e) {
         ARAalert('خطأ: ' + e.message, 'error');
@@ -581,31 +545,7 @@ function initMap() {
     }, null, { position: 'topright' }).addTo(map);
 
     L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
-
-    map.on('click', (e) => {
-        const { lat, lng } = e.latlng;
-        if (mapClickMode === 'pickup') {
-            setPickupPoint(lat, lng);
-            mapClickMode = 'dropoff';
-            document.getElementById('pickupCoords').placeholder = '✓ تم تحديد الانطلاق';
-            document.getElementById('dropoffCoords').placeholder = 'نقرة ثانية = الوجهة';
-            document.getElementById('pickupCoords').closest('.mb-3').querySelector('label').innerHTML =
-                '<span class="text-success fw-bold">✓ نقطة الانطلاق</span>';
-            document.getElementById('dropoffCoords').closest('.mb-3').querySelector('label').innerHTML =
-                '<span class="text-danger fw-bold">نقطة الوجهة (انقر على الخريطة)</span>';
-        } else {
-            setDropoffPoint(lat, lng);
-            mapClickMode = 'pickup';
-            document.getElementById('dropoffCoords').closest('.mb-3').querySelector('label').innerHTML =
-                '<span class="text-success fw-bold">✓ نقطة الوجهة</span>';
-            document.getElementById('pickupCoords').closest('.mb-3').querySelector('label').innerHTML =
-                '<span class="text-muted fw-bold">نقطة الانلاق (انقر على الخريطة)</span>';
-        }
-        updateDispatchBtn();
-    });
 }
-
-let searchResultMarker = null;
 
 /* Local Nouakchott places dataset (from OpenStreetMap/Overpass, ~3500 places).
    Searched first because Nominatim coverage in Nouakchott is weak. */
@@ -675,131 +615,6 @@ function scorePlace(p, tokens, normQuery) {
     return score;
 }
 
-function bindMapSearch() {
-    const input = document.getElementById('mapSearchInput');
-    const btn = document.getElementById('mapSearchBtn');
-    const resultsBox = document.getElementById('mapSearchResults');
-    if (!input || !btn || !resultsBox) return;
-
-    const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    const setLabel = (el, html) => { const l = el.closest('.mb-3').querySelector('label'); if (l) l.innerHTML = html; };
-
-    let activeIndex = 0;
-    let lastResults = [];
-
-    function selectResult(r) {
-        const loc = [r.lat, r.lon];
-        map.flyTo(loc, 16);
-        if (searchResultMarker) map.removeLayer(searchResultMarker);
-        searchResultMarker = L.marker(loc).addTo(map)
-            .bindPopup('<div style="text-align:center"><strong>' + escapeHtml(r.name) + '</strong>' + (r.cat ? '<br><small style="color:#777">' + escapeHtml(r.cat) + '</small>' : '') + '</div>').openPopup();
-        // Feed the dispatch form: first pick = pickup, second = dropoff.
-        if (!pickupCoords) {
-            setPickupPoint(r.lat, r.lon);
-            const a = document.getElementById('pickupAddress');
-            if (a) a.value = r.name;
-            mapClickMode = 'dropoff';
-            const pc = document.getElementById('pickupCoords');
-            const dc = document.getElementById('dropoffCoords');
-            if (pc) pc.placeholder = '✓ تم تحديد الانطلاق';
-            if (dc) dc.placeholder = 'نقرة ثانية = الوجهة';
-            setLabel(pc, '<span class="text-success fw-bold">✓ نقطة الانطلاق</span>');
-            setLabel(dc, '<span class="text-danger fw-bold">نقطة الوجهة (انقر أو ابحث)</span>');
-        } else {
-            setDropoffPoint(r.lat, r.lon);
-            const d = document.getElementById('dropoffAddress');
-            if (d) d.value = r.name;
-            mapClickMode = 'pickup';
-            setLabel(document.getElementById('dropoffCoords'), '<span class="text-success fw-bold">✓ نقطة الوجهة</span>');
-            setLabel(document.getElementById('pickupCoords'), '<span class="text-muted fw-bold">نقطة الانطلاق</span>');
-        }
-        updateDispatchBtn();
-        resultsBox.innerHTML = '';
-        input.value = '';
-    }
-
-    function highlightActive() {
-        resultsBox.querySelectorAll('.map-search-result').forEach((el, i) => {
-            el.classList.toggle('map-search-result-active', i === activeIndex);
-            if (i === activeIndex) el.scrollIntoView({ block: 'nearest' });
-        });
-    }
-
-    function renderResults(items) {
-        lastResults = items;
-        activeIndex = 0;
-        resultsBox.innerHTML = items.map((r, i) =>
-            '<div class="map-search-result' + (i === 0 ? ' map-search-result-active' : '') + '" data-i="' + i + '">' + escapeHtml(r.name) + (r.cat ? ' <span class="ms-cat">' + escapeHtml(r.cat) + '</span>' : '') + '</div>').join('');
-        resultsBox.querySelectorAll('.map-search-result').forEach(el => {
-            el.onclick = () => { activeIndex = parseInt(el.dataset.i); selectResult(lastResults[activeIndex]); };
-            el.onmouseenter = () => {
-                activeIndex = parseInt(el.dataset.i);
-                highlightActive();
-            };
-        });
-    }
-
-    /* Strict Nouakchott bounds (lat/lon) — nothing outside is ever accepted. */
-    const NK_BOUNDS = { minLat: 17.85, maxLat: 18.20, minLng: -16.15, maxLng: -15.70 };
-    const inNouakchott = (lat, lon) => lat >= NK_BOUNDS.minLat && lat <= NK_BOUNDS.maxLat &&
-        lon >= NK_BOUNDS.minLng && lon <= NK_BOUNDS.maxLng;
-
-    async function doSearch() {
-        const q = input.value.trim();
-        if (!q) { resultsBox.innerHTML = ''; return; }
-        const normQuery = normAr(q);
-        const tokens = normQuery.split(' ').filter(Boolean);
-        const isArabic = /[\u0600-\u06FF]/.test(q);
-        try {
-            const places = await loadNouakchottPlaces();
-            const hits = [];
-            for (const p of places) {
-                const score = scorePlace(p, tokens, normQuery);
-                if (!score) continue;
-                const name = isArabic ? (p.a || p.n) : (p.f || p.n);
-                const cat = isArabic ? p.c : p.cf;
-                hits.push({ name: name, cat: cat, lat: p.lat, lon: p.lon, score: score, nameLen: name.length });
-            }
-            hits.sort((x, y) => (y.score - x.score) || (x.nameLen - y.nameLen));
-            if (hits.length) { renderResults(hits.slice(0, 12)); return; }
-
-            const res = await fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) +
-                '&format=json&limit=6&accept-language=ar&countrycodes=mr' +
-                '&viewbox=-16.15,18.20,-15.70,17.85&bounded=1');
-            const data = await res.json();
-            const filtered = data
-                .filter(r => inNouakchott(parseFloat(r.lat), parseFloat(r.lon)))
-                .map(r => ({ name: r.display_name, cat: '', lat: parseFloat(r.lat), lon: parseFloat(r.lon) }));
-            if (!filtered.length) { resultsBox.innerHTML = '<div class="map-search-empty">لا توجد نتائج في نواكشوط</div>'; return; }
-            renderResults(filtered);
-        } catch (e) { console.error('Map search error:', e); }
-    }
-
-    let searchDebounce = null;
-    btn.addEventListener('click', doSearch);
-    input.addEventListener('keydown', (e) => {
-        const results = resultsBox.querySelectorAll('.map-search-result');
-        if (e.key === 'ArrowDown' && results.length) {
-            e.preventDefault();
-            activeIndex = Math.min(activeIndex + 1, results.length - 1);
-            highlightActive();
-        } else if (e.key === 'ArrowUp' && results.length) {
-            e.preventDefault();
-            activeIndex = Math.max(activeIndex - 1, 0);
-            highlightActive();
-        } else if (e.key === 'Enter' && results.length) {
-            e.preventDefault();
-            selectResult(lastResults[activeIndex]);
-        }
-    });
-    input.addEventListener('input', () => {
-        clearTimeout(searchDebounce);
-        searchDebounce = setTimeout(doSearch, 60);
-    });
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.map-search')) resultsBox.innerHTML = '';
-    });
-}
 document.getElementById('darkModeBtn').addEventListener('click', () => {
     document.body.classList.toggle('map-dark');
     const icon = document.querySelector('#darkModeBtn i');
@@ -844,129 +659,6 @@ document.getElementById('statsToggleBtn')?.addEventListener('click', () => {
 });
 applyStatsCollapsed();
 window.addEventListener('resize', resizeMapForStats);
-
-function setPickupPoint(lat, lng) {
-    pickupCoords = { lat, lng };
-    if (pickupMarker) map.removeLayer(pickupMarker);
-    const icon = L.divIcon({
-        className: 'pickup-marker-wrapper',
-        html: '<div style="background:#124D1C;border:3px solid white;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,0.3);color:white;font-size:18px;font-weight:bold;">A</div>',
-        iconSize: [40, 40], iconAnchor: [20, 20]
-    });
-    pickupMarker = L.marker([lat, lng], { icon }).addTo(map);
-    document.getElementById('pickupCoords').value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-    updateRadiusCircle();
-    updateDistanceInfo();
-    updateRouteLine();
-}
-
-function setDropoffPoint(lat, lng) {
-    dropoffCoords = { lat, lng };
-    if (dropoffMarker) map.removeLayer(dropoffMarker);
-    const icon = L.divIcon({
-        className: 'dropoff-marker-wrapper',
-        html: '<div style="background:#B71C1C;border:3px solid white;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,0.3);color:white;font-size:18px;font-weight:bold;">B</div>',
-        iconSize: [40, 40], iconAnchor: [20, 20]
-    });
-    dropoffMarker = L.marker([lat, lng], { icon }).addTo(map);
-    document.getElementById('dropoffCoords').value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-    updateDistanceInfo();
-    updateRouteLine();
-}
-
-function updateRadiusCircle() {
-    if (!pickupCoords) return;
-    if (radiusCircle) map.removeLayer(radiusCircle);
-    const radius = parseInt(document.getElementById('searchRadius').value) * 1000;
-    radiusCircle = L.circle([pickupCoords.lat, pickupCoords.lng], {
-        radius, color: '#0B1849', fillColor: '#D4A843',
-        fillOpacity: 0.15, weight: 2, dashArray: '8, 8'
-    }).addTo(map);
-}
-
-// المسافة الفعلية للطريق من OSRM المجاني بدل الخط المستقيم (السيارات لا تطير).
-// تعيد null عند أي خطأ (لا إنترنت/تعطل) فيتراجع المتصل للخط المستقيم.
-async function fetchRoadKm(a, b) {
-    try {
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 6000);
-        const url = `https://router.project-osrm.org/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=false&alternatives=false&steps=false`;
-        const res = await fetch(url, { signal: ctrl.signal });
-        clearTimeout(timer);
-        if (!res.ok) return null;
-        const data = await res.json();
-        if (data.code !== 'Ok' || !data.routes || !data.routes.length) return null;
-        const m = data.routes[0].distance;
-        return (m && m > 0) ? m / 1000 : null;
-    } catch (e) { return null; }
-}
-
-async function updateDistanceInfo() {
-    const infoDiv = document.getElementById('distanceInfo');
-    if (pickupCoords && dropoffCoords) {
-        const straight = haversine(pickupCoords.lat, pickupCoords.lng, dropoffCoords.lat, dropoffCoords.lng);
-        const roadKm = await fetchRoadKm(pickupCoords, dropoffCoords);
-        const km = roadKm || straight;
-        const fare = calculateFare(km);
-        document.getElementById('realDistance').textContent = `${km.toFixed(2)} كم`;
-        document.getElementById('autoFare').textContent = `${fare} MRU`;
-        const fareInput = document.getElementById('fareInput');
-        if (!fareInput.dataset.manual) fareInput.value = fare;
-        infoDiv.style.display = 'block';
-    } else {
-        infoDiv.style.display = 'none';
-    }
-}
-
-function updateRouteLine() {
-    if (routeLine) map.removeLayer(routeLine);
-    routeLine = null;
-    if (pickupCoords && dropoffCoords) {
-        routeLine = L.polyline([[pickupCoords.lat, pickupCoords.lng], [dropoffCoords.lat, dropoffCoords.lng]], {
-            color: '#D4A843', weight: 3, dashArray: '6, 6', opacity: 0.9
-        }).addTo(map);
-    }
-}
-
-async function updateRideTypeUI() {
-    const type = document.querySelector('input[name="rideType"]:checked')?.value || 'fixed';
-    const hint = document.getElementById('rideTypeHint');
-    const fareInput = document.getElementById('fareInput');
-    const distanceInfo = document.getElementById('distanceInfo');
-    const straightKm = pickupCoords && dropoffCoords ? haversine(pickupCoords.lat, pickupCoords.lng, dropoffCoords.lat, dropoffCoords.lng) : 0;
-    const roadKm = straightKm ? (await fetchRoadKm(pickupCoords, dropoffCoords)) || straightKm : 0;
-    if (type === 'open') {
-        if (hint) hint.textContent = `تُحسب بالمؤقت: بدء ${pricingCfg.timer.start} + ${pricingCfg.timer.perKm}/كم + ${pricingCfg.timer.step}/كل ${pricingCfg.timer.stepMinutes} دقائق. تُقدَّر لأول 15 دقيقة.`;
-        if (fareInput) { fareInput.value = calculateOpenFare(15, roadKm); }
-        if (distanceInfo) distanceInfo.style.display = 'none';
-    } else {
-        if (hint) hint.textContent = `تُحسب من مسافة الطريق الفعلية بالشرائح: ${pricingCfg.car.prices[0]} حتى ${pricingCfg.car.maxKm[0]}كم، وتنتهي بـ ${pricingCfg.car.prices[pricingCfg.car.prices.length - 1]} عند ${pricingCfg.car.maxKm[pricingCfg.car.maxKm.length - 1]}كم`;
-        if (pickupCoords && dropoffCoords) {
-            if (fareInput) fareInput.value = calculateFare(roadKm);
-            updateDistanceInfo();
-        } else {
-            if (fareInput) fareInput.value = pricingCfg.car.prices[0];
-            if (distanceInfo) distanceInfo.style.display = 'none';
-        }
-    }
-}
-
-document.querySelectorAll('input[name="rideType"]').forEach(r => {
-    r.addEventListener('change', updateRideTypeUI);
-});
-
-document.getElementById('fareInput').addEventListener('input', function () {
-    this.dataset.manual = '1';
-});
-
-function updateDispatchBtn() {
-    const hasAll = pickupCoords && dropoffCoords &&
-        document.getElementById('passengerName').value.trim() &&
-        document.getElementById('passengerPhone').value.trim() &&
-        document.getElementById('pickupAddress').value.trim() &&
-        document.getElementById('dropoffAddress').value.trim();
-    document.getElementById('dispatchBtn').disabled = !hasAll;
-}
 
 // ============================================
 // SOUND NOTIFICATION
@@ -1139,7 +831,7 @@ function navigateToPage(page) {
     if (page === 'deliveries') initDeliveriesListener();
     if (page === 'unregistered-customers') loadUnregisteredCustomers();
     if (page === 'rides') loadRidesList();
-    if (page === 'settings') { loadCommission(); loadRidesCleanupSettings(); loadPricingConfig(); }
+    if (page === 'settings') { loadCommission(); loadPricingConfig(); }
     if (page === 'admins') loadAdminsList();
     if (page === 'messages') { loadMsgRecipients(); loadSentMessages(); loadSentCustomerMessages(); }
     if (page === 'announcements') loadAnnouncements();
@@ -1162,187 +854,6 @@ document.querySelectorAll('.sidebar-link').forEach(item => {
 
 // Initial page load: التوجيه التلقائي لأول صفحة يملك المستخدم صلاحية الوصول إليها
 goToDefaultPage();
-
-// ============================================
-// DISPATCH PANEL (Custom RTL-safe)
-// ============================================
-let dispatchPanelOpen = false;
-
-window.toggleDispatchPanel = function () {
-    dispatchPanelOpen = !dispatchPanelOpen;
-    document.getElementById('dispatchPanel').classList.toggle('open', dispatchPanelOpen);
-    document.getElementById('dispatchOverlay').classList.toggle('show', dispatchPanelOpen);
-    document.getElementById('dispatchOverlay').classList.toggle('d-none', !dispatchPanelOpen);
-    if (dispatchPanelOpen) {
-        setTimeout(() => {
-            const f = document.getElementById('passengerName');
-            if (f) f.focus();
-        }, 350);
-    }
-};
-
-function closeDispatchPanel() {
-    dispatchPanelOpen = false;
-    document.getElementById('dispatchPanel').classList.remove('open');
-    document.getElementById('dispatchOverlay').classList.remove('show');
-    setTimeout(() => document.getElementById('dispatchOverlay').classList.add('d-none'), 300);
-}
-
-document.getElementById('searchRadius').addEventListener('input', (e) => {
-    document.getElementById('radiusValue').textContent = `${e.target.value} كم`;
-    updateRadiusCircle();
-});
-
-document.getElementById('clearPickup').addEventListener('click', () => {
-    resetDispatchForm();
-});
-
-document.getElementById('clearDropoff').addEventListener('click', () => {
-    if (dropoffMarker) map.removeLayer(dropoffMarker);
-    dropoffMarker = null; dropoffCoords = null;
-    document.getElementById('dropoffCoords').value = '';
-    document.getElementById('dropoffCoords').placeholder = 'نقرة ثانية = الوجهة';
-    document.getElementById('dropoffCoords').closest('.mb-3').querySelector('label').innerHTML =
-        '<span class="text-muted fw-bold">نقطة الوجهة (انقر مرة ثانية على الخريطة)</span>';
-    mapClickMode = 'dropoff';
-    updateDistanceInfo();
-    updateDispatchBtn();
-});
-
-['passengerName', 'passengerPhone', 'pickupAddress', 'dropoffAddress'].forEach(id => {
-    document.getElementById(id).addEventListener('input', updateDispatchBtn);
-});
-
-const dispatchFocusChain = ['passengerName', 'passengerPhone', 'pickupAddress', 'dropoffAddress'];
-dispatchFocusChain.forEach((id, i) => {
-    document.getElementById(id).addEventListener('keydown', (e) => {
-        if (e.key !== 'Enter') return;
-        e.preventDefault();
-        const nextId = dispatchFocusChain[i + 1] || 'dispatchBtn';
-        const next = document.getElementById(nextId);
-        if (next) next.focus();
-    });
-});
-
-document.getElementById('fareInput').addEventListener('input', (e) => {
-    const v = normalizeDigits(e.target.value).replace(/[^\d.]/g, '');
-    if (e.target.value !== v) e.target.value = v;
-});
-
-function resetDispatchForm() {
-    if (pickupMarker) map.removeLayer(pickupMarker);
-    if (dropoffMarker) map.removeLayer(dropoffMarker);
-    if (radiusCircle) map.removeLayer(radiusCircle);
-    if (routeLine) map.removeLayer(routeLine);
-    pickupMarker = null; dropoffMarker = null; pickupCoords = null; dropoffCoords = null; radiusCircle = null; routeLine = null;
-    mapClickMode = 'pickup';
-    ['passengerName', 'passengerPhone', 'pickupAddress', 'dropoffAddress', 'pickupCoords', 'dropoffCoords'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-    });
-    document.getElementById('pickupCoords').placeholder = 'نقرة أولى = الانطلاق';
-    document.getElementById('dropoffCoords').placeholder = 'نقرة ثانية = الوجهة';
-    document.getElementById('pickupCoords').closest('.mb-3').querySelector('label').innerHTML =
-        '<span class="text-muted fw-bold">نقطة الانطلاق (انقر على الخريطة)</span>';
-    document.getElementById('dropoffCoords').closest('.mb-3').querySelector('label').innerHTML =
-        '<span class="text-muted fw-bold">نقطة الوجهة (انقر مرة ثانية على الخريطة)</span>';
-    document.getElementById('searchRadius').value = 3;
-    document.getElementById('radiusValue').textContent = '3 كم';
-    document.getElementById('fareInput').value = pricingCfg.car.prices[0];
-    document.getElementById('distanceInfo').style.display = 'none';
-    document.getElementById('dispatchBtn').disabled = true;
-    document.getElementById('dispatchStatus').textContent = '';
-}
-
-// ============================================
-// DISPATCH RIDE
-// ============================================
-document.getElementById('dispatchBtn').addEventListener('click', async () => {
-    if (!requireDb('dispatchStatus')) return;
-
-    const passengerName = document.getElementById('passengerName').value.trim();
-    const passengerPhone = document.getElementById('passengerPhone').value.trim();
-    const pickupAddress = document.getElementById('pickupAddress').value.trim();
-    const dropoffAddress = document.getElementById('dropoffAddress').value.trim();
-    const radius = parseInt(document.getElementById('searchRadius').value);
-    const rideType = document.querySelector('input[name="rideType"]:checked')?.value || 'fixed';
-    const fare = parseNum(document.getElementById('fareInput').value) || pricingCfg.car.prices[0];
-
-    if (!passengerName || !passengerPhone) {
-        showStatus('dispatchStatus', 'يرجى إدخال اسم الزبون ورقم هاتفه', 'error');
-        return;
-    }
-    if (!pickupCoords) {
-        showStatus('dispatchStatus', 'يرجى تحديد نقطة الانطلاق على الخريطة', 'error');
-        return;
-    }
-    if (!dropoffCoords) {
-        showStatus('dispatchStatus', 'يرجى تحديد نقطة الوجهة على الخريطة', 'error');
-        return;
-    }
-    if (!pickupAddress || !dropoffAddress) {
-        showStatus('dispatchStatus', 'يرجى إدخال عنوان الانطلاق وعنوان الوجهة', 'error');
-        return;
-    }
-
-    const btn = document.getElementById('dispatchBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>جاري الإرسال...';
-
-    const realDistance = (await fetchRoadKm(pickupCoords, dropoffCoords)) || haversine(pickupCoords.lat, pickupCoords.lng, dropoffCoords.lat, dropoffCoords.lng);
-
-    try {
-        const rideData = {
-            passengerName,
-            passengerPhone,
-            pickupLat: pickupCoords.lat,
-            pickupLng: pickupCoords.lng,
-            dropoffLat: dropoffCoords.lat,
-            dropoffLng: dropoffCoords.lng,
-            pickupAddress,
-            dropoffAddress,
-            realDistanceKm: Math.round(realDistance * 100) / 100,
-            searchRadiusKm: radius,
-            rideType,
-            openPerMin: pricingCfg.timer.perKm,
-            fare,
-            commissionPercent,
-            status: 'pending',
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-
-        const docRef = await db.collection('rides').add(rideData);
-        markSelfTouched(docRef.id);
-        const nearby = await findNearbyDrivers(pickupCoords.lat, pickupCoords.lng, radius);
-
-        if (nearby.length === 0) {
-            showStatus('dispatchStatus', 'لا يوجد سائقون متاحون في النطاق', 'error');
-            await db.collection('rides').doc(docRef.id).update({ status: 'no_drivers' });
-            addNotifLog('dispatch', `فشل الإرسال: لا يوجد سائقون في نطاق ${radius} كم`);
-        } else {
-            const nearbyIds = nearby.map(d => d.id);
-            const tokens = nearby.filter(d => d.fcmToken).map(d => d.fcmToken);
-
-            await db.collection('rides').doc(docRef.id).update({
-                notifiedDrivers: nearbyIds,
-                notificationSentAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            if (tokens.length > 0) {
-                sendFCMNotifications(tokens, docRef.id, passengerName, fare, pickupCoords.lat, pickupCoords.lng, pickupAddress, dropoffAddress, radius, { rideType, openPerMin: pricingCfg.timer.perKm });
-            }
-
-            showStatus('dispatchStatus', `تم الإرسال! ${nearby.length} سائق تم تنبيههم | ${realDistance.toFixed(1)} كم | ${fare} MRU`, 'success');
-            addNotifLog('dispatch', `رحلة ${passengerName}: ${pickupAddress} → ${dropoffAddress} | ${realDistance.toFixed(1)} كم | ${fare} MRU | تنبيه ${nearby.length} سائق`);
-            resetDispatchForm();
-            setTimeout(closeDispatchPanel, 1500);
-        }
-    } catch (err) {
-        showStatus('dispatchStatus', 'حدث خطأ: ' + err.message, 'error');
-    }
-    btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-send-fill me-1"></i>إرسال تنبيه للسائقين';
-});
 
 // ============================================
 // COMMISSION
@@ -1408,103 +919,8 @@ window.saveCustomerCommission = async function () {
 };
 
 // ============================================
-// DAILY RIDES CLEANUP
+// DIGITS + DATE HELPERS
 // ============================================
-async function getAppConfigData() {
-    try {
-        const doc = await db.collection('settings').doc('app_config').get();
-        return doc.exists ? doc.data() : {};
-    } catch (e) { return {}; }
-}
-
-async function deleteAllRides() {
-    const snapshot = await db.collection('rides').get();
-    const ids = snapshot.docs.map(d => d.id);
-    for (let i = 0; i < ids.length; i += 500) {
-        const batch = db.batch();
-        ids.slice(i, i + 500).forEach(id => batch.delete(db.collection('rides').doc(id)));
-        await batch.commit();
-    }
-    return ids.length;
-}
-
-async function loadRidesCleanupSettings() {
-    if (!db) return;
-    try {
-        const cfg = await getAppConfigData();
-        const cb = document.getElementById('ridesCleanupAuto');
-        if (cb) cb.checked = cfg.ridesCleanupAuto !== false;
-        const lastRunEl = document.getElementById('ridesCleanupLastRun');
-        if (lastRunEl) {
-            const t = cfg.ridesCleanupLastRun && cfg.ridesCleanupLastRun.toDate ? cfg.ridesCleanupLastRun.toDate() : null;
-            lastRunEl.textContent = t ? t.toLocaleString('ar-MA') : 'لم يتم بعد';
-        }
-    } catch (e) { console.log('Cleanup settings load error'); }
-}
-
-async function checkDailyRidesCleanup() {
-    if (!db) return;
-    try {
-        const cfg = await getAppConfigData();
-        if (cfg.ridesCleanupAuto === false) return;
-        const lastRun = cfg.ridesCleanupLastRun && cfg.ridesCleanupLastRun.toDate ? cfg.ridesCleanupLastRun.toDate().getTime() : 0;
-        const DAY = 24 * 60 * 60 * 1000;
-        if (!lastRun) {
-            await db.collection('settings').doc('app_config').set(
-                { ridesCleanupLastRun: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-            return;
-        }
-        if (Date.now() - lastRun >= DAY) {
-            const count = await deleteAllRides();
-            await db.collection('settings').doc('app_config').set(
-                { ridesCleanupLastRun: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-            addNotifLog('system', `🧹 بدأ يوم جديد: تم مسح سجل الرحلات (${count} رحلة)`);
-            if (currentPage === 'rides') loadRidesList();
-            loadRidesCleanupSettings();
-        }
-    } catch (e) {
-        console.error('Daily rides cleanup error:', e);
-    }
-}
-
-document.getElementById('ridesCleanupAuto')?.addEventListener('change', async (e) => {
-    if (!requireDb()) return;
-    const val = e.target.checked;
-    try {
-        await db.collection('settings').doc('app_config').set({ ridesCleanupAuto: val }, { merge: true });
-        if (val) {
-            await db.collection('settings').doc('app_config').set(
-                { ridesCleanupLastRun: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-            loadRidesCleanupSettings();
-        }
-        ARAalert(val ? 'تم تفعيل المسح التلقائي يوميًا' : 'تم إيقاف المسح التلقائي', 'success');
-    } catch (err) {
-        ARAalert('خطأ: ' + err.message, 'error');
-        e.target.checked = !val;
-    }
-});
-
-window.clearRidesNow = async function () {
-    if (sessionStorage.getItem('SHATER_admin_role') !== 'admin') {
-        ARAalert('هذا الإجراء متاح فقط لصلاحية مدير عام', 'warning');
-        return;
-    }
-    if (!(await ARAconfirm('سيتم حذف سجل الرحلات بالكامل الآن. هل أنت متأكد؟'))) return;
-    if (!(await ARAconfirm('تأكيد نهائي: سيبدأ يوم جديد بسجل فارغ. متابعة؟'))) return;
-    if (!requireDb()) return;
-    try {
-        const count = await deleteAllRides();
-        await db.collection('settings').doc('app_config').set(
-            { ridesCleanupLastRun: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-        addNotifLog('system', `🧹 تم مسح سجل الرحلات يدويًا (${count} رحلة)`);
-        if (currentPage === 'rides') loadRidesList();
-        loadRidesCleanupSettings();
-        ARAalert(`تم مسح سجل الرحلات (${count} رحلة)`, 'success');
-    } catch (err) {
-        ARAalert('خطأ: ' + err.message, 'error');
-    }
-};
-
 const ARABIC_DIGIT_MAP = { '٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9','۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9' };
 function normalizeDigits(str) {
     if (str === null || str === undefined) return '';
@@ -3376,7 +2792,6 @@ function renderRidesList(rides) {
     const labels = { pending: 'قيد الانتظار', accepted: 'مقبولة', in_progress: 'جارية', completed: 'مكتملة', cancelled: 'ملغاة', no_drivers: 'بلا سائق' };
     const colors = { pending: 'warning', accepted: 'primary', in_progress: 'success', completed: 'purple', cancelled: 'danger', no_drivers: 'secondary' };
     const canCancel = ['pending', 'accepted', 'in_progress'];
-    const canRelaunch = ['cancelled', 'no_drivers'];
     tbody.innerHTML = rides.map(r => {
         const created = r.createdAt?.toDate ? fmtDate(r.createdAt.toDate()) : '-';
         const fare = r.fare || 0;
@@ -3391,9 +2806,7 @@ function renderRidesList(rides) {
         const driverPhone = driver ? driver.phone : '-';
         const actionBtn = canCancel.includes(r.status)
             ? `<button class="btn-action btn-action-delete mt-1" onclick="cancelRide('${r.id}')">إلغاء</button> `
-            : canRelaunch.includes(r.status)
-                ? `<button class="btn-action btn-action-edit mt-1" onclick="reLaunchRide('${r.id}')"><i class="bi bi-arrow-repeat me-1"></i>إعادة إطلاق</button> `
-                : '';
+            : '';
         const deleteBtn = `<button class="btn-action btn-action-delete mt-1" onclick="deleteRide('${r.id}')" title="حذف السجل"><i class="bi bi-trash"></i></button>`;
         return `<tr>
             <td><strong>${r.passengerName || '-'}</strong></td>
@@ -3471,70 +2884,6 @@ window.deleteRide = async function (rideId) {
         addNotifLog('system', `🗑️ تم حذف سجل الرحلة ${rideId}`);
         if (currentPage === 'rides') loadRidesList();
     } catch (err) { ARAalert('خطأ: ' + err.message, 'error'); }
-};
-
-window.reLaunchRide = async function (rideId) {
-    if (!requireDb()) return;
-    if (!(await ARAconfirm('سيتم إطلاق نفس الرحلة مرة أخرى بنفس المعلومات وتنبيه السائقين القريبين. متابعة؟'))) return;
-    try {
-        markSelfTouched(rideId);
-        const snap = await db.collection('rides').doc(rideId).get();
-        if (!snap.exists) { ARAalert('الرحلة غير موجودة', 'error'); return; }
-        const r = snap.data();
-        if (r.status !== 'cancelled' && r.status !== 'no_drivers') {
-            ARAalert('يمكن إعادة إطلاق الرحلات الملغاة أو بلا سائق فقط', 'warning');
-            return;
-        }
-        const radius = r.searchRadiusKm || 3;
-        const lat = r.pickupLat || 0;
-        const lng = r.pickupLng || 0;
-        const del = firebase.firestore.FieldValue.delete();
-        const rideRef = db.collection('rides').doc(rideId);
-        await rideRef.update({
-            status: 'pending',
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            notifiedDrivers: [],
-            assignedDriverId: del,
-            assignedDriverName: del,
-            acceptedAt: del,
-            acceptedBy: del,
-            cancelledBy: del,
-            cancelledAt: del,
-            cancelledReason: del,
-            completedAt: del,
-            completionCode: del,
-            driverRating: del
-        });
-        const nearby = await findNearbyDrivers(lat, lng, radius);
-        if (nearby.length === 0) {
-            await rideRef.update({ status: 'no_drivers' });
-            addNotifLog('dispatch', `فشل إعادة الإطلاق: لا يوجد سائقون في نطاق ${radius} كم`);
-            ARAalert('لا يوجد سائقون متاحون في النطاق. الرحلة الآن بلا سائق.', 'error');
-        } else {
-            const nearbyIds = nearby.map(d => d.id);
-            const tokens = nearby.filter(d => d.fcmToken).map(d => d.fcmToken);
-            await rideRef.update({
-                notifiedDrivers: nearbyIds,
-                notificationSentAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            if (tokens.length > 0) {
-                sendFCMNotifications(tokens, rideId, r.passengerName || '', r.fare || 0, lat, lng, r.pickupAddress || '', r.dropoffAddress || '', radius, { notes: r.notes || '', hasVoiceNote: r.voiceNote ? 'true' : '' }, r.dropoffLat || lat, r.dropoffLng || lng);
-            }
-            addNotifLog('dispatch', `إعادة إطلاق رحلة ${r.passengerName || ''}: ${r.pickupAddress || ''} → ${r.dropoffAddress || ''} | ${r.realDistanceKm || 0} كم | ${r.fare || 0} MRU | تنبيه ${nearby.length} سائق`);
-            ARAalert(`تمت إعادة الإطلاق! تم تنبيه ${nearby.length} سائق`, 'success');
-        }
-        if (r.deliveryId) {
-            await db.collection('delivery_requests').doc(r.deliveryId).update({ status: 'launched', rideId });
-            notifyDeliveryCustomer(r.deliveryId, {
-                title: 'تم إعادة تفعيل رحلتك',
-                body: 'تم إعادة إرسال رحلتك، جارٍ إيجاد سائق لك من جديد.',
-                data: { status: 'reactivated', cancelledBy: '' }
-            });
-        }
-        if (currentPage === 'rides') loadRidesList();
-    } catch (err) {
-        ARAalert('خطأ: ' + err.message, 'error');
-    }
 };
 
 document.getElementById('filterRideStatus').addEventListener('change', () => {
@@ -3626,17 +2975,11 @@ function renderDeliveriesList(deliveries) {
         const safeName = (d.customerName || d.customerPhone || '').replace(/'/g, '');
         const safeRecv = (d.receiverPhone || '').replace(/'/g, '');
         let actions = '';
-        if (d.status === 'new') {
-            actions += `<button class="btn-action btn-action-credit" onclick="openDeliveryPriceModal('${d.id}')">إرسال السعر</button> `;
-        }
         if (d.status === 'new' || d.status === 'price_sent') {
             actions += `<button class="btn-action btn-action-edit" onclick="setDeliveryStatus('${d.id}','accepted')">قبول (نشط)</button> `;
         }
         if (d.status === 'accepted' || d.status === 'launched' || d.status === 'in_progress') {
             actions += `<button class="btn-action btn-action-credit" onclick="setDeliveryStatus('${d.id}','completed')">مكتملة</button> `;
-        }
-        if (d.status === 'accepted') {
-            actions += `<button class="btn-action btn-action-send" onclick="dispatchDeliveryToDrivers('${d.id}')">إرسال للسائقين</button> `;
         }
         if (d.status !== 'completed' && d.status !== 'cancelled') {
             actions += `<button class="btn-action btn-action-toggle" onclick="setDeliveryStatus('${d.id}','cancelled')">إلغاء</button> `;
@@ -3655,75 +2998,6 @@ function renderDeliveriesList(deliveries) {
         </tr>`;
     }).join('');
 }
-
-window.openDeliveryPriceModal = function (id) {
-    const d = allDeliveries.find(x => x.id === id);
-    if (!d) return;
-    document.getElementById('deliveryPriceId').value = id;
-    document.getElementById('deliveryPriceCustomer').textContent = d.customerName || '-';
-    document.getElementById('deliveryPriceReceiver').textContent = d.receiverPhone || '-';
-    document.getElementById('deliveryPriceSender').textContent = d.senderDistrict || '-';
-    document.getElementById('deliveryPriceReceiverDistrict').textContent = d.receiverDistrict || '-';
-    document.getElementById('deliveryPricePickup').textContent = d.pickupAddress || d.senderDistrict || '-';
-    document.getElementById('deliveryPriceDropoff').textContent = d.dropoffAddress || d.receiverDistrict || '-';
-    document.getElementById('deliveryPriceNotes').textContent = d.notes || '-';
-    document.getElementById('deliveryPriceValue').value = '';
-    const voice = d.voiceNote || '';
-    const voiceEl = document.getElementById('deliveryPriceVoice');
-    const voiceGroup = document.getElementById('deliveryPriceVoiceGroup');
-    const voiceBtn = document.getElementById('deliveryPriceVoiceBtn');
-    if (voiceEl && voiceGroup && voiceBtn) {
-        voiceEl.pause();
-        voiceEl.currentTime = 0;
-        voiceEl.src = voice;
-        voiceBtn.innerHTML = '<i class="bi bi-play-fill"></i> تشغيل';
-        voiceGroup.classList.toggle('d-none', !voice);
-    }
-    const sLat = parseFloat(d.senderLat), sLng = parseFloat(d.senderLng);
-    const dLat = parseFloat(d.dropoffLat ?? d.receiverLat), dLng = parseFloat(d.dropoffLng ?? d.receiverLng);
-    const mapLink = document.getElementById('deliveryPriceMapLink');
-    if (mapLink) {
-        if (isNaN(sLat) || isNaN(sLng) || isNaN(dLat) || isNaN(dLng)) {
-            mapLink.classList.add('d-none');
-        } else {
-            mapLink.classList.remove('d-none');
-            mapLink.href = `https://www.google.com/maps/dir/${sLat},${sLng}/${dLat},${dLng}`;
-        }
-    }
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('deliveryPriceModal')).show();
-};
-
-window.toggleDeliveryPriceVoice = function () {
-    const voiceEl = document.getElementById('deliveryPriceVoice');
-    const voiceBtn = document.getElementById('deliveryPriceVoiceBtn');
-    if (!voiceEl || !voiceBtn) return;
-    if (voiceEl.paused) {
-        voiceEl.play().then(() => {
-            voiceBtn.innerHTML = '<i class="bi bi-pause-fill"></i> إيقاف';
-        }).catch(() => {});
-    } else {
-        voiceEl.pause();
-        voiceBtn.innerHTML = '<i class="bi bi-play-fill"></i> تشغيل';
-    }
-};
-
-document.getElementById('deliveryPriceVoice')?.addEventListener('ended', () => {
-    const voiceBtn = document.getElementById('deliveryPriceVoiceBtn');
-    if (voiceBtn) voiceBtn.innerHTML = '<i class="bi bi-play-fill"></i> تشغيل';
-});
-
-document.getElementById('confirmDeliveryPriceBtn')?.addEventListener('click', async () => {
-    const id = document.getElementById('deliveryPriceId').value;
-    const val = parseFloat(document.getElementById('deliveryPriceValue').value);
-    if (!id || !val || val <= 0) { ARAalert('أدخل سعراً صحيحاً', 'warning'); return; }
-    if (!requireDb()) return;
-    try {
-        await db.collection('delivery_requests').doc(id).update({ status: 'price_sent', pendingPrice: val });
-        bootstrap.Modal.getInstance(document.getElementById('deliveryPriceModal'))?.hide();
-        addNotifLog('delivery_price', `💰 أُرسل سعر التوصيلة: ${val} MRU`);
-        ARAalert('تم إرسال السعر للزبون بنجاح', 'success');
-    } catch (err) { ARAalert('خطأ: ' + err.message, 'error'); }
-});
 
 window.setDeliveryStatus = async function (id, status) {
     if (!(await ARAconfirm('تحديث حالة التوصيلة إلى "' + (deliveryStatusLabels[status] || status) + '"؟'))) return;
@@ -3766,150 +3040,6 @@ window.deleteDelivery = async function (id) {
     try {
         await db.collection('delivery_requests').doc(id).delete();
     } catch (err) { ARAalert('خطأ: ' + err.message, 'error'); }
-};
-
-// إرسال توصيلة من لوحة التحكم إلى سائقي التوصيل كرحلة برقمي المرسل والمستلم
-window.dispatchDeliveryToDrivers = async function (id) {
-    const d = allDeliveries.find(x => x.id === id);
-    if (!d) return;
-    if (!(await ARAconfirm('إرسال هذه التوصيلة إلى سائقي التوصيل؟ سيتم تنبيه السائقين المتاحين.'))) return;
-    if (!requireDb()) return;
-    const price = d.pendingPrice != null ? d.pendingPrice : (d.fare != null ? d.fare : 0);
-    if (!price || price <= 0) { ARAalert('أدخل سعراً أولاً عبر زر "إرسال السعر"', 'warning'); return; }
-    const hasPickup = !!(d.senderLat && d.senderLng);
-    const hasDropoff = !!(d.dropoffLat && d.dropoffLng) || !!(d.receiverLat && d.receiverLng);
-    if (!hasPickup && !hasDropoff) { ARAalert('لا توجد إحداثيات لنقطة الانطلاق أو الوجهة على هذه التوصيلة', 'warning'); return; }
-    if (!hasPickup) { ARAalert('تنبيه: لا توجد إحداثيات لنقطة الانطلاق — عدّلها من سجل الرحلات بعد الإرسال.', 'warning'); }
-
-    const lat = d.senderLat || 0;
-    const lng = d.senderLng || 0;
-    const dropLat = d.dropoffLat || d.receiverLat || lat;
-    const dropLng = d.dropoffLng || d.receiverLng || lng;
-    const realDist = hasPickup ? haversine(lat, lng, dropLat, dropLng) : 0;
-    let radius = 20;
-    try {
-        const cfg = await db.collection('settings').doc('app_config').get();
-        if (cfg.exists) {
-            radius = cfg.data().deliveryRadiusKm || cfg.data().searchRadiusKm || 20;
-        }
-    } catch (e) {}
-
-    const rideData = {
-        type: 'delivery',
-        deliveryId: id,
-        passengerName: d.customerName || 'طلب توصيل',
-        passengerPhone: d.customerPhone || '',
-        senderPhone: d.senderPhone || '',
-        receiverPhone: d.receiverPhone || '',
-        senderName: d.customerName || 'المرسل',
-        receiverName: '',
-        senderDistrict: d.senderDistrict || '',
-        receiverDistrict: d.receiverDistrict || '',
-        notes: d.notes || '',
-        voiceNote: d.voiceNote || '',
-        pickupLat: lat,
-        pickupLng: lng,
-        dropoffLat: dropLat,
-        dropoffLng: dropLng,
-        pickupAddress: d.pickupAddress || d.senderDistrict || '',
-        dropoffAddress: d.dropoffAddress || d.receiverDistrict || '',
-        realDistanceKm: Math.round(realDist * 100) / 100,
-        searchRadiusKm: radius,
-        rideType: d.rideType || 'fixed',
-        openPerMin: pricingCfg.timer.perKm,
-        fare: price,
-        commissionPercent,
-        deliveryPhase: 'at_sender',
-        status: 'pending',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-
-    try {
-        // إعادة استخدام سجل الرحلة السابق إذا كان للتوصيلة رحلة ملغاة أو بلا سائق — لمنع التكرار
-        let rideDocRef = null;
-        let rideExists = false;
-        if (d.rideId) {
-            const existingSnap = await db.collection('rides').doc(d.rideId).get();
-            if (existingSnap.exists) {
-                const existingStatus = existingSnap.data().status;
-                if (existingStatus === 'cancelled' || existingStatus === 'no_drivers') {
-                    rideDocRef = existingSnap.ref;
-                    rideExists = true;
-                } else if (existingStatus === 'pending' || existingStatus === 'accepted' || existingStatus === 'in_progress') {
-                    ARAalert('هذه التوصيلة لديها رحلة نشطة بالفعل', 'warning');
-                    return;
-                }
-            }
-        }
-
-        const del = firebase.firestore.FieldValue.delete();
-        if (rideExists) {
-            // تحديث نفس المستند ومسح بيانات القبول/الإلغاء السابقة
-            await rideDocRef.update({
-                ...rideData,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                notifiedDrivers: [],
-                assignedDriverId: del,
-                assignedDriverName: del,
-                acceptedAt: del,
-                acceptedBy: del,
-                cancelledBy: del,
-                cancelledAt: del,
-                cancelledReason: del,
-                completedAt: del,
-                completionCode: del,
-                driverRating: del
-            });
-        } else {
-            rideDocRef = await db.collection('rides').add(rideData);
-        }
-        const rideId = rideDocRef.id;
-        markSelfTouched(rideId);
-        const searchLat = hasPickup ? lat : dropLat;
-        const searchLng = hasPickup ? lng : dropLng;
-        const nearby = await findNearbyDrivers(searchLat, searchLng, radius);
-        if (nearby.length === 0) {
-            await db.collection('rides').doc(rideId).update({ status: 'no_drivers' });
-            await db.collection('delivery_requests').doc(id).update({ status: 'accepted', rideId });
-            addNotifLog('delivery_dispatch', 'لا يوجد سائقون متاحون: ' + id);
-            ARAalert('لا يوجد سائقون متاحون في النطاق حالياً', 'warning');
-        } else {
-            const nearbyIds = nearby.map(x => x.id);
-            const tokens = nearby.filter(x => x.fcmToken).map(x => x.fcmToken);
-            await db.collection('rides').doc(rideId).update({
-                notifiedDrivers: nearbyIds,
-                notificationSentAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            if (tokens.length > 0) {
-                sendFCMNotifications(tokens, rideId, 'طلب توصيل', price, lat, lng, d.pickupAddress || d.senderDistrict || '', d.dropoffAddress || d.receiverDistrict || '', radius, {
-                    senderPhone: d.senderPhone || '',
-                    receiverPhone: d.receiverPhone || '',
-                    senderDistrict: d.senderDistrict || '',
-                    receiverDistrict: d.receiverDistrict || '',
-                    pickupAddress: d.pickupAddress || d.senderDistrict || '',
-                    dropoffAddress: d.dropoffAddress || d.receiverDistrict || '',
-                    notes: d.notes || '',
-                    hasVoiceNote: d.voiceNote ? 'true' : '',
-                    deliveryId: id,
-                    deliveryPhase: 'at_sender',
-                    rideType: d.rideType || 'fixed',
-                    openPerMin: pricingCfg.timer.perKm
-                }, dropLat, dropLng);
-            }
-            await db.collection('delivery_requests').doc(id).update({ status: 'launched', rideId });
-            if (rideExists) {
-                notifyDeliveryCustomer(id, {
-                    title: 'تم إعادة تفعيل رحلتك',
-                    body: 'تم إعادة إرسال رحلتك، جارٍ إيجاد سائق لك من جديد.',
-                    data: { status: 'reactivated', cancelledBy: '' }
-                });
-            }
-            addNotifLog('delivery_dispatch', `تم إرسال التوصيلة ${id} إلى ${nearby.length} سائق | ${price} MRU`);
-            ARAalert(`تم الإرسال! ${nearby.length} سائق تم تنبيههم`, 'success');
-        }
-    } catch (err) {
-        ARAalert('خطأ: ' + err.message, 'error');
-    }
 };
 
 window.exportDeliveriesCSV = function () {
@@ -5022,7 +4152,7 @@ const FN_PERM = {
     addPromotion: 'promotions', addStore: 'stores',
     clearNotifLog: 'settings', clearOldAnnouncements: 'announcements',
     clearOldCustomerAnnouncements: 'customer_announcements', clearOldMessages: 'messages',
-    clearRidesNow: 'rides', clearStoreLocation: 'stores', confirmResetAllData: 'settings',
+    clearStoreLocation: 'stores', confirmResetAllData: 'settings',
     exportCustomersCSV: 'customers', exportDriversCSV: 'drivers', exportRidesCSV: 'rides',
     exportUnregisteredCustomersCSV: 'unregistered',
     openStoreMapPicker: 'stores', saveCommission: 'settings', saveCustomerCommission: 'settings',
@@ -5034,14 +4164,14 @@ const FN_PERM = {
     deleteCustomerAnnouncement: 'customer_announcements', deleteCustomerProduct: 'products',
     deleteDelivery: 'deliveries', deleteLadiesProduct: 'ladies', deleteProduct: 'products',
     deletePromotion: 'promotions', deleteSentCustomerMsg: 'messages', deleteSentMsg: 'messages',
-    deleteStore: 'stores', deleteSubscriptionRequest: 'recharge_approve', dispatchDeliveryToDrivers: 'deliveries',
+    deleteStore: 'stores', deleteSubscriptionRequest: 'recharge_approve',
     openCustomerPasswordModal: 'customers_edit', openDeleteCustomerModal: 'customers_delete',
-    openDeleteModal: 'drivers_delete', openDeliveryPriceModal: 'deliveries',
+    openDeleteModal: 'drivers_delete',
     openEditAdminModal: 'admins', openEditCreditModal: 'drivers_credit',
     openEditCustomerCreditModal: 'customers_credit', openEditCustomerModal: 'customers_edit',
     openEditModal: 'drivers_edit', openPasswordModal: 'drivers_edit',
     rejectCustomerProduct: 'products', rejectRechargeRequest: 'recharge_approve',
-    reLaunchRide: 'rides', setDeliveryStatus: 'deliveries', toggleCustomerProduct: 'products',
+    setDeliveryStatus: 'deliveries', toggleCustomerProduct: 'products',
     toggleDriverService: 'drivers_service', toggleDriverStatus: 'drivers_edit',
     toggleLadiesProduct: 'ladies', toggleStore: 'stores'
 };
@@ -5461,7 +4591,6 @@ function initDashboard() {
     // The map tiles get priority: the heavy Firestore listeners and stats are
     // started a moment later so the live map appears quickly on slow links.
     initMap();
-    bindMapSearch();
     loadNouakchottPlaces();
     applyRoleVisibility();
     // Ensure the map re-measures after the layout settles so it always fills
@@ -5472,12 +4601,10 @@ function initDashboard() {
         loadCommission();
         loadCustomerCommission();
         loadPricingConfig();
-        loadRidesCleanupSettings();
         loadStats();
         initRealtimeListeners();
         initEventWatchers();
         initDesktopNotifications();
-        checkDailyRidesCleanup();
         setInterval(loadStats, 60000);
         addNotifLog('system', 'تم تشغيل لوحة التحكم');
     }, 1200);
