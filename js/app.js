@@ -6444,8 +6444,8 @@ window.submitBookingRide = async function () {
         addNotifLog('dispatch',
             `حجز ${name} (${phone}): ${pickupAddress} ← ${isOpen ? 'جولة مفتوحة' : dropoffAddress}` +
             ` | ${isOpen ? open.start + ' + ' + open.perHour + '/ساعة' : fare + ' MRU'} | ${ids.length} سائق`);
-        showStatus('bkStatus', `تم إشعار ${ids.length} سائق. البحث جارٍ...`, 'success');
         resetBookingForm();
+        showStatus('bkStatus', `تم إشعار ${ids.length} سائق. البحث جارٍ...`, 'success');
     } catch (err) {
         showStatus('bkStatus', 'خطأ: ' + err.message, 'error');
     } finally {
