@@ -875,6 +875,14 @@
                                             <div class="col-3"><label class="form-label small mb-1">توصيل ×</label><input type="number" min="0" step="0.1" class="form-control form-control-sm" id="delMult"></div>
                                         </div>
                                     </div>
+                                    <div class="col-md-6">
+                                        <h6 class="fw-bold text-dark-blue mb-2"><i class="bi bi-timer-fill me-1"></i>الجولة المفتوحة (سيارة — بالوقت)</h6>
+                                        <div class="row g-2">
+                                            <div class="col-6"><label class="form-label small mb-1">مبلغ البدء (MRU)</label><input type="number" min="0" class="form-control form-control-sm" id="openStart"></div>
+                                            <div class="col-6"><label class="form-label small mb-1">السعر (MRU / ساعة)</label><input type="number" min="0" class="form-control form-control-sm" id="openPerHour"></div>
+                                        </div>
+                                        <div class="text-muted small mt-2">جولة بلا وجهة — يُدفع بدء + كل ساعة. مضاعف الليل يُطبَّق كالطلب العادي.</div>
+                                    </div>
                                 </div>
                                 <button class="btn btn-dark-blue text-white fw-bold mt-3" onclick="savePricingConfig()"><i class="bi bi-check-lg me-1"></i>حفظ إعدادات التسعير</button>
                                 <button class="btn btn-outline-secondary fw-bold mt-3 ms-2" onclick="resetPricingConfig()"><i class="bi bi-arrow-counterclockwise me-1"></i>استعادة الأسعار الافتراضية</button>
@@ -2072,7 +2080,7 @@
             load(0);
         })();
     </script>
-    <script src="js/app.js?v=20260813f"></script>
+    <script src="js/app.js?v=20260813g"></script>
 </body>
 </html>
 

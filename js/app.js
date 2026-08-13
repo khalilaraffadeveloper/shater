@@ -397,7 +397,8 @@ function defaultPricing() {
     return {
         car: { maxKm: [1, 3, 5, 8, 12, 20, 30], prices: [70, 95, 125, 165, 225, 310, 435], perExtraKm: 19 },
         delivery: { maxKm: [1, 3, 5, 8, 12, 20], prices: [85, 105, 125, 155, 195, 245], perExtraKm: 20, max: 250 },
-        night: { startHour: 0, endHour: 5, carMultiplier: 1.5, deliveryMultiplier: 1.3 }
+        night: { startHour: 0, endHour: 5, carMultiplier: 1.5, deliveryMultiplier: 1.3 },
+        open: { start: 75, perHour: 400 }
     };
 }
 let pricingCfg = defaultPricing();
@@ -459,6 +460,8 @@ function fillPricingSettingsForm() {
     set('nightEnd', c.night.endHour);
     set('carMult', c.night.carMultiplier);
     set('delMult', c.night.deliveryMultiplier);
+    set('openStart', c.open.start);
+    set('openPerHour', c.open.perHour);
 }
 
 window.savePricingConfig = async function () {
@@ -486,6 +489,10 @@ window.savePricingConfig = async function () {
                 endHour: num('nightEnd', 5),
                 carMultiplier: num('carMult', 1.5),
                 deliveryMultiplier: num('delMult', 1.3)
+            },
+            open: {
+                start: num('openStart', 75),
+                perHour: num('openPerHour', 400)
             }
         }
     };
@@ -1288,7 +1295,7 @@ function initRealtimeListeners() {
                     });
                     const statusLabel = r.status === 'in_progress' ? 'جارية' : 'مقبولة';
                     const marker = L.marker([r.pickupLat, r.pickupLng], { icon })
-                        .bindPopup(`<div style="font-family:Cairo;text-align:center;direction:rtl;"><strong>${r.passengerName || 'زبون'}</strong><br><small>${r.pickupAddress || ''} → ${r.dropoffAddress || ''}</small><br><strong>${r.fare || 0} MRU</strong><br><span style="color:${r.status==='in_progress'?'#2E7D32':'#E65100'};">● ${statusLabel}</span></div>`)
+                        .bindPopup(`<div style="font-family:Cairo;text-align:center;direction:rtl;"><strong>${r.passengerName || 'زبون'}</strong><br><small>${r.pickupAddress || ''} → ${r.dropoffAddress || ''}</small><br><strong>${r.finalPrice || r.fare || 0} MRU</strong><br><span style="color:${r.status==='in_progress'?'#2E7D32':'#E65100'};">● ${statusLabel}</span></div>`)
                         .addTo(map);
                     activeRidesMap[id] = { marker, data: r };
                 }
@@ -2794,12 +2801,13 @@ function renderRidesList(rides) {
     const canCancel = ['pending', 'accepted', 'in_progress'];
     tbody.innerHTML = rides.map(r => {
         const created = r.createdAt?.toDate ? fmtDate(r.createdAt.toDate()) : '-';
-        const fare = r.fare || 0;
+        const fare = r.finalPrice || r.fare || 0;
         const comm = r.commissionAmount || Math.round(fare * commissionPercent / 100);
         const commPct = r.commissionPercent || commissionPercent;
         const dist = r.realDistanceKm ? `${r.realDistanceKm} كم` : '-';
-        const rideTypeBadge = r.rideType === 'open'
-            ? '<span class="badge bg-info text-dark"><i class="bi bi-stopwatch me-1"></i>مفتوحة</span>'
+        const isOpen = r.rideKind === 'open' || r.rideType === 'open';
+        const rideTypeBadge = isOpen
+            ? '<span class="badge bg-info text-dark"><i class="bi bi-stopwatch me-1"></i>جولة مفتوحة</span>'
             : '<span class="badge bg-secondary"><i class="bi bi-sign-turn-right me-1"></i>محددة</span>';
         const driver = r.assignedDriverId ? (driversInfoCache[r.assignedDriverId] || null) : null;
         const driverName = driver ? driver.name : (r.assignedDriverId ? '...' : '-');
@@ -3127,7 +3135,7 @@ window.exportRidesCSV = function () {
     let csv = '\uFEFF' + 'الزبون,هاتف الزبون,نقطة الانطلاق,الوجهة,المسافة,السعر,العمولة,اسم السائق,هاتف السائق,الحالة,التاريخ\n';
     allRides.forEach(r => {
         const created = r.createdAt?.toDate ? fmtDate(r.createdAt.toDate()) : '';
-        const fare = r.fare || 0;
+        const fare = r.finalPrice || r.fare || 0;
         const comm = r.commissionAmount || Math.round(fare * commissionPercent / 100);
         const driver = r.assignedDriverId ? (driversInfoCache[r.assignedDriverId] || null) : null;
         const driverName = driver ? driver.name : '';
