@@ -6111,7 +6111,8 @@ if (document.readyState === 'loading') {
 // ============================================
 // BOOKING ON BEHALF OF CUSTOMER (حجز نيابةً عن الزبون)
 // ينشئ رحلة بنفس صيغة طلبات التطبيق (rides) مع source: 'admin'، ويدير
-// البحث عن السائقين من اللوحة: TTL 90 ثانية، جولات 3→5→8→الكل كم.
+// البحث عن السائقين من اللوحة: TTL 90 ثانية، جولات 2كم فوراً ثم 3كم عند
+// 30ث ثم 4كم عند 60ث (سقف 4 كم إطلاقاً).
 // السائق يقبل/يبدأ/يُكمل من تطبيقه كالمعتاد.
 // ============================================
 const BK_TTL_SECONDS = 90;
@@ -6408,7 +6409,7 @@ window.submitBookingRide = async function () {
         });
         markSelfTouched(rideRef.id);
 
-        const drivers = await adminFindMatchingDrivers(bkPickup.lat, bkPickup.lng, vehicle, 3, 5);
+        const drivers = await adminFindMatchingDrivers(bkPickup.lat, bkPickup.lng, vehicle, 2, 5);
         if (drivers.length === 0) {
             await rideRef.update({
                 status: 'expired',
@@ -6510,9 +6511,8 @@ async function bkSearchTick(rideId) {
             return;
         }
         const elapsed = (Date.now() - (bkPendingStartedAt || Date.now())) / 1000;
-        if (!bkRounds.r2 && elapsed >= 20) { bkRounds.r2 = true; adminSearchRound(rideId, 4, 5); }
-        if (!bkRounds.r3 && elapsed >= 40) { bkRounds.r3 = true; adminSearchRound(rideId, 4, 5); }
-        if (!bkRounds.r4 && elapsed >= 60) { bkRounds.r4 = true; adminSearchRound(rideId, 4, 10); }
+        if (!bkRounds.r2 && elapsed >= 30) { bkRounds.r2 = true; adminSearchRound(rideId, 3, 5); }
+        if (!bkRounds.r3 && elapsed >= 60) { bkRounds.r3 = true; adminSearchRound(rideId, 4, 5); }
         const count = (data.notifiedDrivers || []).length;
         const left = Math.max(0, Math.ceil((expiresAt.toMillis() - Date.now()) / 1000));
         bkShowSearchStatus(`⏳ جاري البحث عن سائق... ${count} سائق أُشعروا | متبقّي ${left} ث`);
