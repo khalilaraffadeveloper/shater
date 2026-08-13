@@ -5404,27 +5404,108 @@ let shaterLocalMicTrack = null;
 let shaterRemoteAudioTrack = null;
 let shaterCurrentCall = null; // { id, callerName, callerRole, channelName }
 let shaterRingtoneAudio = null;
+let shaterRingCtx = null;
 let shaterRingTimer = null;
+let shaterRingGain = null;
+let shaterRingOscs = [];
 let shaterMicMuted = false;
 
-// --- Ringtone: project's own soft notification tone, looped ---
+// --- Ringtone: familiar telephone ring via Web Audio, no vibration ---
+// The incoming call arrives from a Firestore listener (no user gesture), and
+// browsers block Audio.play() until the first interaction. We therefore unlock
+// the audio context on the first click/touch/keypress so the ring always plays.
+function shaterEnsureRingCtx() {
+    if (!shaterRingCtx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        shaterRingCtx = new AC();
+    }
+    if (shaterRingCtx.state === 'suspended') {
+        try { shaterRingCtx.resume(); } catch (e) {}
+    }
+    return shaterRingCtx;
+}
+
+function shaterUnlockAudio() {
+    const unlock = () => {
+        shaterEnsureRingCtx();
+        document.removeEventListener('pointerdown', unlock);
+        document.removeEventListener('touchstart', unlock);
+        document.removeEventListener('keydown', unlock);
+    };
+    document.addEventListener('pointerdown', unlock);
+    document.addEventListener('touchstart', unlock);
+    document.addEventListener('keydown', unlock);
+}
+
+function shaterPlayRingBurst(ctx, startTime, dur) {
+    if (!shaterRingGain) return;
+    [440, 480].forEach((freq) => {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        g.gain.setValueAtTime(0.0001, startTime);
+        g.gain.exponentialRampToValueAtTime(0.3, startTime + 0.02);
+        g.gain.setValueAtTime(0.3, startTime + dur - 0.05);
+        g.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
+        osc.connect(g);
+        g.connect(shaterRingGain);
+        osc.start(startTime);
+        osc.stop(startTime + dur + 0.02);
+        shaterRingOscs.push(osc);
+    });
+}
+
 function shaterStartRingtone() {
     shaterStopRingtone();
-    try {
-        shaterRingtoneAudio = new Audio('js/soundreality_notification_tone.mp3');
-        shaterRingtoneAudio.loop = true;
-        shaterRingtoneAudio.volume = 0.8;
-        const p = shaterRingtoneAudio.play();
-        if (p && p.catch) p.catch(e => console.warn('Ringtone play error:', e));
-    } catch (e) { console.warn('Ringtone error:', e); }
+    const ctx = shaterEnsureRingCtx();
+    if (!ctx) {
+        // Fallback for very old browsers: the project's notification tone.
+        try {
+            shaterRingtoneAudio = new Audio('js/soundreality_notification_tone.mp3');
+            shaterRingtoneAudio.loop = true;
+            shaterRingtoneAudio.volume = 0.8;
+            const p = shaterRingtoneAudio.play();
+            if (p && p.catch) p.catch(e => console.warn('Ringtone play error:', e));
+        } catch (e) { console.warn('Ringtone error:', e); }
+        return;
+    }
+    shaterRingGain = ctx.createGain();
+    shaterRingGain.gain.value = 0.8;
+    shaterRingGain.connect(ctx.destination);
+    const t0 = ctx.currentTime + 0.05;
+    shaterPlayRingBurst(ctx, t0, 0.5);
+    shaterPlayRingBurst(ctx, t0 + 0.85, 0.5);
+    shaterRingTimer = setInterval(() => {
+        const t = ctx.currentTime + 0.05;
+        shaterPlayRingBurst(ctx, t, 0.5);
+        shaterPlayRingBurst(ctx, t + 0.85, 0.5);
+    }, 2200);
 }
+
 function shaterStopRingtone() {
+    if (shaterRingTimer) {
+        clearInterval(shaterRingTimer);
+        shaterRingTimer = null;
+    }
+    shaterRingOscs.forEach((o) => {
+        try { o.stop(); } catch (e) {}
+        try { o.disconnect(); } catch (e) {}
+    });
+    shaterRingOscs = [];
+    if (shaterRingGain) {
+        try { shaterRingGain.disconnect(); } catch (e) {}
+        shaterRingGain = null;
+    }
     if (shaterRingtoneAudio) {
         try { shaterRingtoneAudio.pause(); } catch (e) {}
         try { shaterRingtoneAudio.src = ''; } catch (e) {}
         shaterRingtoneAudio = null;
     }
 }
+
+shaterUnlockAudio();
 
 // --- Incoming call modal ---
 function shaterShowIncomingCall(callId, data) {
