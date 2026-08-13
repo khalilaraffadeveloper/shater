@@ -6510,9 +6510,9 @@ async function bkSearchTick(rideId) {
             return;
         }
         const elapsed = (Date.now() - (bkPendingStartedAt || Date.now())) / 1000;
-        if (!bkRounds.r2 && elapsed >= 20) { bkRounds.r2 = true; adminSearchRound(rideId, 5, 5); }
-        if (!bkRounds.r3 && elapsed >= 40) { bkRounds.r3 = true; adminSearchRound(rideId, 8, 5); }
-        if (!bkRounds.r4 && elapsed >= 60) { bkRounds.r4 = true; adminSearchRound(rideId, 500, 10); }
+        if (!bkRounds.r2 && elapsed >= 20) { bkRounds.r2 = true; adminSearchRound(rideId, 4, 5); }
+        if (!bkRounds.r3 && elapsed >= 40) { bkRounds.r3 = true; adminSearchRound(rideId, 4, 5); }
+        if (!bkRounds.r4 && elapsed >= 60) { bkRounds.r4 = true; adminSearchRound(rideId, 4, 10); }
         const count = (data.notifiedDrivers || []).length;
         const left = Math.max(0, Math.ceil((expiresAt.toMillis() - Date.now()) / 1000));
         bkShowSearchStatus(`⏳ جاري البحث عن سائق... ${count} سائق أُشعروا | متبقّي ${left} ث`);
