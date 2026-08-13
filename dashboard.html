@@ -1882,6 +1882,29 @@
         </div>
     </div>
 
+    <!-- BOOKING RIDE MAP MODAL -->
+    <div class="modal fade" id="bookingMapModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom">
+                    <h6 class="fw-bold"><i class="bi bi-geo-alt me-2 text-gold"></i><span id="bookingMapTitle">تحديد نقطة الانطلاق</span></h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="small text-muted mb-2"><i class="bi bi-hand-index-thumb me-1"></i>انقر على الخريطة لتحديد الموقع</div>
+                    <div id="bookingMapPicker" style="height:55vh;border-radius:12px;overflow:hidden;"></div>
+                </div>
+                <div class="modal-footer border-top d-flex justify-content-between">
+                    <div class="fw-semibold text-muted small" id="bookingMapCoordsText">لم يُحدد بعد</div>
+                    <div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="button" class="btn btn-dark-blue text-white fw-bold" id="confirmBookingLocationBtn">تأكيد الموقع</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- EDIT ADMIN MODAL -->
     <div class="modal fade" id="editAdminModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -2100,7 +2123,7 @@
             load(0);
         })();
     </script>
-    <script src="js/app.js?v=20260814g"></script>
+    <script src="js/app.js?v=20260815"></script>
 </body>
 </html>
 

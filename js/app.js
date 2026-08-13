@@ -6141,13 +6141,11 @@ if (document.readyState === 'loading') {
 const BK_TTL_SECONDS = 90;
 let bkPickup = null;
 let bkDropoff = null;
-let bkPickMode = null;
 let bkMarkers = {};
 let bkActiveRideId = null;
 let bkSearchTicker = null;
 let bkRounds = { r2: false, r3: false, r4: false };
 let bkPendingStartedAt = null;
-let bkMapBound = false;
 
 window.toggleBookingPanel = function () {
     const panel = document.getElementById('bookingPanel');
@@ -6156,7 +6154,6 @@ window.toggleBookingPanel = function () {
     const hidden = panel.classList.toggle('d-none');
     if (txt) txt.textContent = hidden ? 'عرض النموذج' : 'إخفاء النموذج';
     if (!hidden) {
-        if (!bkMapBound && map) { map.on('click', onBookingMapClick); bkMapBound = true; }
         const f = document.getElementById('bkName');
         if (f) setTimeout(() => f.focus(), 250);
         bkAutoPickup();
@@ -6175,29 +6172,51 @@ async function bkAutoPickup() {
     } catch (e) {}
 }
 
+let bookingMap = null;
+let bookingMapMarker = null;
+let bookingMapTemp = null;
+let bookingMapMode = null;
+
 window.setBookingPickMode = function (mode) {
-    if (!map) return;
-    if (!bkMapBound) { map.on('click', onBookingMapClick); bkMapBound = true; }
-    bkPickMode = mode;
-    showStatus('bkStatus',
-        mode === 'pickup' ? 'انقر على الخريطة لتحديد نقطة الانطلاق' : 'انقر على الخريطة لتحديد الوجهة', 'success');
+    const modalEl = document.getElementById('bookingMapModal');
+    const pickerEl = document.getElementById('bookingMapPicker');
+    if (!modalEl || !pickerEl) return;
+    bookingMapMode = mode;
+    bookingMapTemp = null;
+    const title = document.getElementById('bookingMapTitle');
+    if (title) title.textContent = mode === 'pickup' ? 'تحديد نقطة الانطلاق' : 'تحديد الوجهة';
+    const coords = document.getElementById('bookingMapCoordsText');
+    if (coords) coords.textContent = 'لم يُحدد بعد';
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    setTimeout(() => {
+        if (bookingMap) { bookingMap.invalidateSize(); return; }
+        bookingMap = L.map('bookingMapPicker', { zoomControl: true }).setView([18.0735, -15.9582], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap', maxZoom: 19
+        }).addTo(bookingMap);
+        bookingMap.on('click', function (e) {
+            bookingMapTemp = { lat: e.latlng.lat, lng: e.latlng.lng };
+            if (bookingMapMarker) bookingMapMarker.setLatLng(e.latlng);
+            else bookingMapMarker = L.marker(e.latlng).addTo(bookingMap);
+            const coordsEl = document.getElementById('bookingMapCoordsText');
+            if (coordsEl) coordsEl.textContent = 'تم التحديد: ' + e.latlng.lat.toFixed(5) + ', ' + e.latlng.lng.toFixed(5);
+        });
+    }, 150);
 };
 
-function onBookingMapClick(ev) {
-    if (!bkPickMode || !ev.latlng) return;
-    const pt = { lat: ev.latlng.lat, lng: ev.latlng.lng };
-    if (bkPickMode === 'pickup') {
-        bkPickup = pt;
-        bkDrawMarker('pickup', pt);
-        bkFillAddress('pickup', pt);
+document.getElementById('confirmBookingLocationBtn')?.addEventListener('click', function () {
+    if (!bookingMapTemp) { ARAalert('انقر على الخريطة لتحديد الموقع أولاً', 'warning'); return; }
+    if (bookingMapMode === 'pickup') {
+        bkPickup = bookingMapTemp;
+        bkFillAddress('pickup', bookingMapTemp);
     } else {
-        bkDropoff = pt;
-        bkDrawMarker('dropoff', pt);
-        bkFillAddress('dropoff', pt);
+        bkDropoff = bookingMapTemp;
+        bkFillAddress('dropoff', bookingMapTemp);
     }
-    bkPickMode = null;
+    bootstrap.Modal.getInstance(document.getElementById('bookingMapModal'))?.hide();
+    bookingMapTemp = null;
     updateBookingFare();
-}
+});
 
 function bkDrawMarker(which, pt) {
     const color = which === 'pickup' ? '#2E7D32' : '#C62828';
