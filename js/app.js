@@ -6152,13 +6152,10 @@ function bkPriceFor(vehicle, km) {
 window.updateBookingFare = async function () {
     const type = document.querySelector('input[name="bkType"]:checked')?.value || 'fixed';
     const isOpen = type === 'open';
-    const vehicleEl = document.getElementById('bkVehicle');
     const dropRow = document.getElementById('bkDropRow');
     const fareEl = document.getElementById('bkFare');
     const distEl = document.getElementById('bkDistance');
-    if (vehicleEl) vehicleEl.disabled = isOpen;
     if (isOpen) {
-        if (vehicleEl) vehicleEl.value = 'car';
         if (dropRow) dropRow.classList.add('d-none');
         const open = pricingCfg.open || { start: 75, perHour: 400 };
         if (fareEl) fareEl.textContent = `${open.start} + ${open.perHour} MRU/ساعة`;
@@ -6166,6 +6163,7 @@ window.updateBookingFare = async function () {
         return;
     }
     if (dropRow) dropRow.classList.remove('d-none');
+    const vehicleEl = document.getElementById('bkVehicle');
     if (!vehicleEl) return;
     const km = await bkComputeDistance();
     const fare = bkPriceFor(vehicleEl.value, km);
