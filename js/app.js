@@ -6550,3 +6550,163 @@ function bkShowSearchStatus(text) {
     st.classList.remove('d-none');
     t.textContent = text;
 }
+
+// ============================================
+// النسخة الاحتياطية المحلية (قاعدة على جهازك)
+// ============================================
+const LOCAL_BACKUP_PHOTO_FIELDS_DRIVER = ['photoUrl', 'identityPhotoUrl', 'identityPhoto', 'licensePhotoUrl', 'licensePhoto', 'insurancePhotoUrl'];
+const LOCAL_BACKUP_PHOTO_FIELDS_RECHARGE = ['proofImageUrl', 'screenshotBase64'];
+
+function localBackupStatusEl() { return document.getElementById('localBackupStatus'); }
+
+function localBackupServerUrl() {
+    const el = document.getElementById('localBackupUrl');
+    return (el && el.value ? el.value : 'http://localhost:3456').replace(/\/+$/, '');
+}
+
+function localBackupStatus(html, type) {
+    const el = localBackupStatusEl();
+    if (!el) return;
+    const cls = { error: 'alert alert-danger', ok: 'alert alert-success', info: 'alert alert-info', warn: 'alert alert-warning' }[type] || 'alert alert-info';
+    el.innerHTML = `<div class="${cls} mb-0 py-2 small">${html}</div>`;
+}
+
+function localBackupParseDataUrl(v) {
+    if (typeof v !== 'string' || !v) return null;
+    const m = v.match(/^data:([^;]+);base64,(.+)$/s);
+    if (m) return { mime: m[1], base64: m[2].trim() };
+    if (/^[A-Za-z0-9+/=\r\n]+$/.test(v)) return { mime: 'image/jpeg', base64: v.trim() };
+    return null;
+}
+
+function localBackupSerialize(v) {
+    if (v == null) return null;
+    if (v instanceof Date) return v.toISOString();
+    if (v && typeof v.toDate === 'function') {
+        try { return v.toDate().toISOString(); } catch (e) { return null; }
+    }
+    if (Array.isArray(v)) return v.map(localBackupSerialize);
+    if (typeof v === 'object') {
+        if (v.latitude != null && v.longitude != null && typeof v.latitude === 'number' && typeof v.longitude === 'number') {
+            return { latitude: v.latitude, longitude: v.longitude };
+        }
+        const out = {};
+        for (const k of Object.keys(v)) {
+            const val = localBackupSerialize(v[k]);
+            if (val !== undefined) out[k] = val;
+        }
+        return out;
+    }
+    return v;
+}
+
+window.localBackupCheck = async function () {
+    localBackupStatus('جاري التحقق من الخادم المحلي...', 'info');
+    try {
+        const res = await fetch(localBackupServerUrl() + '/api/stats');
+        const s = await res.json();
+        if (!s || !s.ok) { localBackupStatus('الخادم لا يستجيب بشكل صحيح', 'error'); return; }
+        const counts = s.counts || {};
+        localBackupStatus(
+            `<b>الاتصال ناجح.</b> القاعدة: <code>${s.db || 'شاطر.db'}</code> — السائقون: ${counts.drivers}، الزبائن: ${counts.customers}، طلبات الشحن: ${counts.recharge_requests}، الصور المحفوظة: ${s.photos || 0}${s.lastSync ? ' — آخر مزامنة: ' + new Date(s.lastSync).toLocaleString('ar-MA') : ''}`,
+            'ok');
+    } catch (e) {
+        localBackupStatus('تعذر الاتصال بالخادم المحلي. تأكد من تشغيل <code>run.bat</code> في مجلد <code>local_backup</code> على هذا الجهاز ثم أعد المحاولة.', 'error');
+    }
+};
+
+window.localBackupSync = async function () {
+    if (!requireDb()) return;
+    localBackupStatus('جاري قراءة البيانات من قاعدة النت...', 'info');
+    try {
+        const start = Date.now();
+        const [driversSnap, customersSnap, rechargeSnap, ridesSnap, deliveriesSnap] = await Promise.all([
+            db.collection('drivers').get(),
+            db.collection('customers').get(),
+            db.collection('recharge_requests').get(),
+            db.collection('rides').get(),
+            db.collection('delivery_requests').get()
+        ]);
+        const toPlain = (snap) => snap.docs.map(doc => ({ id: doc.id, ...localBackupSerialize(doc.data()) }));
+        const collections = {
+            drivers: toPlain(driversSnap),
+            customers: toPlain(customersSnap),
+            recharge_requests: toPlain(rechargeSnap),
+            rides: toPlain(ridesSnap),
+            delivery_requests: toPlain(deliveriesSnap)
+        };
+        localBackupStatus(`قرأنا ${collections.drivers.length} سائقاً، ${collections.customers.length} زبوناً، ${collections.recharge_requests.length} طلب شحن. جاري تجهيز الصور...`, 'info');
+
+        const photos = [];
+        const photoExtract = (col, row, fields) => {
+            for (const f of fields) {
+                const parsed = localBackupParseDataUrl(row[f]);
+                if (parsed) photos.push({ collection: col, docId: row.id, field: f, mime: parsed.mime, base64: parsed.base64 });
+            }
+        };
+        collections.drivers.forEach(r => photoExtract('drivers', r, LOCAL_BACKUP_PHOTO_FIELDS_DRIVER));
+        collections.recharge_requests.forEach(r => photoExtract('recharge_requests', r, LOCAL_BACKUP_PHOTO_FIELDS_RECHARGE));
+        localBackupStatus(`وجدنا ${photos.length} صورة مدمجة. جاري الإرسال إلى جهازك...`, 'info');
+
+        const payload = { collections: collections, photos: photos };
+        const res = await fetch(localBackupServerUrl() + '/api/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            localBackupStatus('فشل الإرسال إلى القاعدة المحلية: ' + (err.error || res.status), 'error');
+            return;
+        }
+        const r = await res.json();
+        if (!r || !r.ok) { localBackupStatus('فشل الإرسال إلى القاعدة المحلية', 'error'); return; }
+        const secs = ((Date.now() - start) / 1000).toFixed(1);
+        localBackupStatus(
+            `<b>تمت المزامنة بنجاح خلال ${secs} ثانية.</b><br>` +
+            `السائقون: ${r.counts.drivers} • الزبائن: ${r.counts.customers} • طلبات الشحن: ${r.counts.recharge_requests} • الرحلات: ${r.counts.rides} • التوصيل: ${r.counts.delivery_requests}<br>` +
+            `الصور المحفوظة على جهازك: <b>${r.photos}</b><br>` +
+            `الآن يمكنك فتح صفحة البحث المحلية من <code>local_backup/run.bat</code>، ثم الضغط على «امسح الصور من قاعدة النت» لتوفير مساحة التخزين المجانية.`,
+            'ok');
+    } catch (e) {
+        console.error('localBackupSync error:', e);
+        localBackupStatus('خطأ في المزامنة: ' + (e && e.message || e), 'error');
+    }
+};
+
+window.localBackupClearPhotos = async function () {
+    if (!requireDb()) return;
+    if (!window.confirm('هل أنت متأكد؟ سيتم حذف صور المنتسبين (الشخصية/الهوية/الرخصة/التأمين/إثبات الدفع) من قاعدة النت نهائياً، وتبقى المعلومات النصية فقط (الاسم/الرقم/الكود). يجب أن تكون قد أكملت المزامنة إلى جهازك أولاً.')) return;
+    localBackupStatus('جاري تفريغ الصور من قاعدة النت...', 'info');
+    try {
+        const [driversSnap, rechargeSnap] = await Promise.all([
+            db.collection('drivers').get(),
+            db.collection('recharge_requests').get()
+        ]);
+        const del = () => firebase.firestore.FieldValue.delete();
+        let cleared = { drivers: 0, recharge: 0 };
+
+        for (const doc of driversSnap.docs) {
+            const data = doc.data() || {};
+            const update = {};
+            let any = false;
+            for (const f of LOCAL_BACKUP_PHOTO_FIELDS_DRIVER) {
+                if (data[f] != null) { update[f] = del(); any = true; }
+            }
+            if (any) { await db.collection('drivers').doc(doc.id).update(update); cleared.drivers++; }
+        }
+        for (const doc of rechargeSnap.docs) {
+            const data = doc.data() || {};
+            const update = {};
+            let any = false;
+            for (const f of LOCAL_BACKUP_PHOTO_FIELDS_RECHARGE) {
+                if (data[f] != null) { update[f] = del(); any = true; }
+            }
+            if (any) { await db.collection('recharge_requests').doc(doc.id).update(update); cleared.recharge++; }
+        }
+        localBackupStatus(`تم تفريغ الصور: سائقون (${cleared.drivers}) وطلبات شحن (${cleared.recharge}). بقيت المعلومات النصية كاملة. يمكنك التحقق من قاعدة جهازك في أي وقت عبر <code>local_backup/run.bat</code>.`, 'ok');
+    } catch (e) {
+        console.error('localBackupClearPhotos error:', e);
+        localBackupStatus('خطأ في تفريغ الصور: ' + (e && e.message || e), 'error');
+    }
+};

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>شاطر — القاعدة المحلية (بحث بدون إنترنت)</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+    background: #f3f5f9;
+    margin: 0; padding: 0; color: #1a2332;
+  }
+  header {
+    background: linear-gradient(135deg, #0f6bff, #0d5bd6);
+    color: #fff; padding: 20px 24px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+  }
+  header h1 { margin: 0; font-size: 22px; font-weight: 700; }
+  header .sub { font-size: 13px; opacity: .85; margin-top: 4px; }
+  .stats { font-size: 13px; background: rgba(255,255,255,.15); border-radius: 8px; padding: 8px 14px; }
+  .container { max-width: 1000px; margin: 20px auto; padding: 0 14px; }
+  .searchbar { display: flex; gap: 10px; margin-bottom: 18px; }
+  .searchbar input {
+    flex: 1; padding: 12px 16px; font-size: 15px; border: 1px solid #cfd6e4;
+    border-radius: 10px; outline: none; background: #fff;
+  }
+  .searchbar input:focus { border-color: #0f6bff; box-shadow: 0 0 0 3px rgba(15,107,255,.15); }
+  .searchbar select {
+    padding: 0 10px; border: 1px solid #cfd6e4; border-radius: 10px; background: #fff; font-size: 14px;
+  }
+  .searchbar button {
+    padding: 0 22px; border: none; border-radius: 10px; background: #0f6bff; color: #fff;
+    font-size: 15px; cursor: pointer; font-weight: 600;
+  }
+  .searchbar button:hover { background: #0d5bd6; }
+  .card {
+    background: #fff; border-radius: 12px; box-shadow: 0 1px 4px rgba(20,40,80,.08);
+    padding: 16px 18px; margin-bottom: 14px;
+  }
+  .row-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .row-title { font-weight: 700; font-size: 17px; }
+  .row-meta { font-size: 13px; color: #5a6a85; margin-top: 6px; line-height: 1.7; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .badge-green { background: #e3f6ea; color: #1c7c3c; }
+  .badge-red { background: #fde8e8; color: #b3261e; }
+  .badge-blue { background: #e3eeff; color: #0f5bd6; }
+  .photos { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .photos img {
+    width: 150px; height: 100px; object-fit: cover; border-radius: 8px;
+    border: 1px solid #dfe5f0; cursor: zoom-in;
+  }
+  .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: none;
+    align-items: center; justify-content: center; z-index: 50; cursor: zoom-out; }
+  .lightbox img { max-width: 92vw; max-height: 92vh; border-radius: 8px; }
+  .empty { text-align: center; color: #8a97ab; padding: 40px 0; }
+  .note { font-size: 12.5px; color: #5a6a85; background: #eef2fa; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; }
+  .detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px 16px; }
+  .detail-grid div { font-size: 13.5px; }
+  .detail-grid b { color: #5a6a85; font-weight: 600; }
+  @media (max-width: 640px) {
+    .photos img { width: 120px; height: 82px; }
+    .searchbar { flex-wrap: wrap; }
+    .searchbar select { padding: 10px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>شاطر — القاعدة المحلية</h1>
+    <div class="sub">نسخة احتياطية على جهازك تعمل بدون إنترنت</div>
+  </div>
+  <div class="stats" id="stats">جاري التحميل...</div>
+</header>
+
+<div class="container">
+  <div class="note">
+    هذا الملف هو نسخة محفوظة على جهازك من بيانات لوحة شاطر (السائقين، الزبائن، طلبات الشحن، الرحلة، التوصيل)
+    مع صور المنتسبين. يمكنك البحث بالاسم أو الهاتف أو الكود. بعد نجاح المزامنة يتم تفريغ الصور من قاعدة النت
+    والاكتفاء بالنص (الاسم / الرقم / الكود).
+  </div>
+
+  <div class="searchbar">
+    <input id="q" placeholder="ابحث بالاسم أو رقم الهاتف أو الكود..." autocomplete="off">
+    <select id="col">
+      <option value="drivers">السائقون</option>
+      <option value="customers">الزبائن</option>
+      <option value="recharge_requests">طلبات الشحن</option>
+    </select>
+    <button id="btn">بحث</button>
+  </div>
+
+  <div id="results"></div>
+</div>
+
+<div class="lightbox" id="lightbox"><img id="lightboxImg" src="" alt=""></div>
+
+<script>
+(function () {
+  var results = document.getElementById('results');
+  var qEl = document.getElementById('q');
+  var colEl = document.getElementById('col');
+  var statsEl = document.getElementById('stats');
+  var lightbox = document.getElementById('lightbox');
+  var lightboxImg = document.getElementById('lightboxImg');
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (m) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+    });
+  }
+
+  function loadStats() {
+    fetch('/api/stats').then(function (r) { return r.json(); }).then(function (s) {
+      if (!s || !s.ok) { statsEl.textContent = 'لا يمكن قراءة القاعدة'; return; }
+      var parts = [
+        'السائقون: ' + s.counts.drivers,
+        'الزبائن: ' + s.counts.customers,
+        'الشحن: ' + s.counts.recharge_requests,
+        'الصور: ' + s.photos
+      ];
+      if (s.lastSync) { parts.push('آخر مزامنة: ' + new Date(s.lastSync).toLocaleString('ar')); }
+      statsEl.textContent = parts.join('  •  ');
+    }).catch(function () { statsEl.textContent = 'القاعدة غير متصلة'; });
+  }
+
+  function showDetail(row, col, photos) {
+    fetch('/api/detail?col=' + encodeURIComponent(col) + '&id=' + encodeURIComponent(row.id))
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.record) { results.insertAdjacentHTML('beforeend', '<div class="empty">لا يوجد تفاصيل</div>'); return; }
+        var rec = d.record;
+        var fields = [];
+        function push(k, v) { if (v !== undefined && v !== null && v !== '' && String(v) !== 'null') { fields.push('<div><b>' + esc(k) + ':</b> ' + esc(v) + '</div>'); } }
+        if (col === 'drivers') {
+          push('الاسم', rec.name); push('الهاتف', rec.phone); push('الرقم/الكود', rec.driverCode || rec.code);
+          push('المركبة', rec.vehicleModel || rec.vehicleType || ''); push('نوع الطلب', rec.role === 'delivery' ? 'دراجة' : 'سيارة');
+          push('التقييم', rec.rating != null ? rec.rating : ''); push('حالة الحساب', rec.status);
+          push('الاشتراك ينتهي', rec.subscriptionEnd || rec.subscriptionEndDate || '');
+        } else if (col === 'customers') {
+          push('الاسم', rec.name); push('الهاتف', rec.phone); push('الرقم/الكود', rec.customerCode || rec.code);
+        } else {
+          push('رقم الطلب', rec.requestId || rec.id); push('الهاتف', rec.phone); push('المستخدم', rec.userId);
+          push('المبلغ', rec.amount); push('الحالة', rec.status); push('الوقت', rec.createdAt || rec.timestamp || '');
+        }
+        var imgs = (d.photos || []).map(function (ph) {
+          return '<img src="' + ph.url + '" alt="' + esc(ph.field) + '" onclick="window._zoom(this.src)">';
+        }).join('');
+        var div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML = '<div class="row-head"><div class="row-title">' + esc(row.name || row.phone || row.id) + '</div></div>' +
+          '<div class="detail-grid">' + fields.join('') + '</div>' +
+          (imgs ? '<div class="photos">' + imgs + '</div>' : '');
+        results.appendChild(div);
+      }).catch(function () {});
+  }
+
+  function run() {
+    var q = qEl.value.trim();
+    var col = colEl.value;
+    results.innerHTML = '';
+    if (!q) { results.innerHTML = '<div class="empty">اكتب للبحث بالاسم أو الهاتف أو الكود</div>'; return; }
+    fetch('/api/search?q=' + encodeURIComponent(q) + '&col=' + encodeURIComponent(col))
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.rows || !d.rows.length) { results.innerHTML = '<div class="empty">لا توجد نتائج مطابقة</div>'; return; }
+        d.rows.forEach(function (row) {
+          showDetail(row, col, d.photos || []);
+        });
+      }).catch(function () { results.innerHTML = '<div class="empty">خطأ في الاتصال بالقاعدة المحلية</div>'; });
+  }
+
+  window._zoom = function (src) { lightboxImg.src = src; lightbox.style.display = 'flex'; };
+
+  document.getElementById('btn').addEventListener('click', run);
+  qEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') run(); });
+  lightbox.addEventListener('click', function () { lightbox.style.display = 'none'; });
+
+  loadStats();
+})();
+</script>
+</body>
+</html>

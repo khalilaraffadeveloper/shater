@@ -935,6 +935,32 @@
                     <div class="col-12">
                         <div class="card shadow-sm border-0">
                             <div class="card-header bg-white border-bottom">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-hdd-stack-fill text-gold me-2"></i>النسخة الاحتياطية المحلية (قاعدة على جهازك)</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-info py-2 small mb-3">
+                                    تُنسخ كل بيانات اللوحة (السائقون، الزبائن، طلبات الشحن، الرحلات، التوصيل) مع صور المنتسبين إلى قاعدة بيانات
+                                    <b>على جهازك</b> عبر <b>server.js</b> في مجلد <code>local_backup</code> (يعمل بلا إنترنت). بعد نجاح المزامنة يمكنك
+                                    <b>تفريغ الصور من قاعدة النت</b> والاكتفاء بالنص (الاسم/الرقم/الكود) لتقليل استخدام التخزين المجاني — دون أي تأثير على التطبيق أو اللوحة.
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-md-5">
+                                        <label class="form-label fw-bold small">الخادم المحلي (يُشغَّل من run.bat)</label>
+                                        <input type="text" class="form-control form-control-sm" id="localBackupUrl" value="http://localhost:3456" dir="ltr">
+                                    </div>
+                                    <div class="col-md-7 d-flex flex-wrap align-items-end gap-2">
+                                        <button class="btn btn-dark-blue text-white fw-bold" onclick="localBackupCheck()"><i class="bi bi-plug me-1"></i>التحقق من الاتصال</button>
+                                        <button class="btn btn-success text-white fw-bold" onclick="localBackupSync()"><i class="bi bi-cloud-arrow-down me-1"></i>مزامنة إلى جهازي</button>
+                                        <button class="btn btn-danger text-white fw-bold" onclick="localBackupClearPhotos()"><i class="bi bi-image me-1"></i>امسح الصور من قاعدة النت</button>
+                                    </div>
+                                </div>
+                                <div class="mt-3" id="localBackupStatus"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom">
                                 <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-telephone-fill text-gold me-2"></i>معلومات الاتصال</h6>
                             </div>
                             <div class="card-body">
@@ -2074,7 +2100,7 @@
             load(0);
         })();
     </script>
-    <script src="js/app.js?v=20260814e"></script>
+    <script src="js/app.js?v=20260814f"></script>
 </body>
 </html>
 
