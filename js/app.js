@@ -1136,8 +1136,8 @@ function initEventWatchers() {
     // 2) أحداث الرحلات (قبول/إنجاز/إلغاء...) من السائق
     db.collection('rides').orderBy('createdAt', 'desc').limit(100)
         .onSnapshot(snap => {
-            const labels = { pending: 'قيد الانتظار', accepted: 'مقبولة', in_progress: 'جارية', completed: 'مكتملة', cancelled: 'ملغاة', no_drivers: 'بلا سائق' };
-            const statusIcons = { pending: '⏳', accepted: '✅', in_progress: '🛵', completed: '🏁', cancelled: '❌', no_drivers: '🚫' };
+            const labels = { pending: 'قيد الانتظار', accepted: 'مقبولة', in_progress: 'جارية', completed: 'مكتملة', cancelled: 'ملغاة', expired: 'منتهٍ', no_drivers: 'بلا سائق' };
+            const statusIcons = { pending: '⏳', accepted: '✅', in_progress: '🛵', completed: '🏁', cancelled: '❌', expired: '⌛', no_drivers: '🚫' };
             if (rideWatchFirst) {
                 snap.forEach(d => { rideWatchStatus[d.id] = d.data().status; });
                 rideWatchFirst = false;
@@ -1916,8 +1916,8 @@ function renderCustomerProfile(c, rides) {
     const isOn = !!c.isOnline;
     const created = c.createdAt && c.createdAt.toDate ? fmtDate(c.createdAt.toDate()) : '-';
     const lastUpd = c.lastUpdated && c.lastUpdated.toDate ? fmtDate(c.lastUpdated.toDate()) : '-';
-    const rideLabels = { pending: 'قيد الانتظار', accepted: 'مقبولة', in_progress: 'جارية', completed: 'مكتملة', cancelled: 'ملغاة', no_drivers: 'بلا سائق' };
-    const rideColors = { pending: 'warning', accepted: 'primary', in_progress: 'success', completed: 'purple', cancelled: 'danger', no_drivers: 'secondary' };
+    const rideLabels = { pending: 'قيد الانتظار', accepted: 'مقبولة', in_progress: 'جارية', completed: 'مكتملة', cancelled: 'ملغاة', expired: 'منتهٍ', no_drivers: 'بلا سائق' };
+    const rideColors = { pending: 'warning', accepted: 'primary', in_progress: 'success', completed: 'purple', cancelled: 'danger', expired: 'dark', no_drivers: 'secondary' };
 
     const ridesHtml = rides.length === 0
         ? '<div class="text-muted text-center py-3">لا توجد رحلات مسجّلة لهذا الزبون</div>'
@@ -2789,8 +2789,8 @@ function renderRidesList(rides) {
         tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted py-4">لا توجد رحلات</td></tr>';
         return;
     }
-    const labels = { pending: 'قيد الانتظار', accepted: 'مقبولة', in_progress: 'جارية', completed: 'مكتملة', cancelled: 'ملغاة', no_drivers: 'بلا سائق' };
-    const colors = { pending: 'warning', accepted: 'primary', in_progress: 'success', completed: 'purple', cancelled: 'danger', no_drivers: 'secondary' };
+    const labels = { pending: 'قيد الانتظار', accepted: 'مقبولة', in_progress: 'جارية', completed: 'مكتملة', cancelled: 'ملغاة', expired: 'منتهٍ', no_drivers: 'بلا سائق' };
+    const colors = { pending: 'warning', accepted: 'primary', in_progress: 'success', completed: 'purple', cancelled: 'danger', expired: 'dark', no_drivers: 'secondary' };
     const canCancel = ['pending', 'accepted', 'in_progress'];
     tbody.innerHTML = rides.map(r => {
         const created = r.createdAt?.toDate ? fmtDate(r.createdAt.toDate()) : '-';
@@ -5330,7 +5330,7 @@ function renderStatusChart(statusCount) {
     const ctx = document.getElementById('reportStatusChart');
     if (!ctx) return;
     if (reportCharts.status) reportCharts.status.destroy();
-    const labelsMap = { pending: 'قيد الانتظار', accepted: 'مقبولة', in_progress: 'جارية', completed: 'مكتملة', cancelled: 'ملغاة', no_drivers: 'بلا سائق', unknown: 'أخرى' };
+    const labelsMap = { pending: 'قيد الانتظار', accepted: 'مقبولة', in_progress: 'جارية', completed: 'مكتملة', cancelled: 'ملغاة', expired: 'منتهٍ', no_drivers: 'بلا سائق', unknown: 'أخرى' };
     const colors = ['#F5A623', '#2F7DF6', '#16C79A', '#8E44AD', '#F0483E', '#9AA5B5', '#CCCCCC'];
     const labels = Object.keys(statusCount).map(s => labelsMap[s] || s);
     const data = Object.values(statusCount);
