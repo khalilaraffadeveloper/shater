@@ -6107,3 +6107,460 @@ if (document.readyState === 'loading') {
 } else {
     shaterBindCallButtons();
 }
+
+// ============================================
+// BOOKING ON BEHALF OF CUSTOMER (حجز نيابةً عن الزبون)
+// ينشئ رحلة بنفس صيغة طلبات التطبيق (rides) مع source: 'admin'، ويدير
+// البحث عن السائقين من اللوحة: TTL 90 ثانية، جولات 3→5→8→الكل كم.
+// السائق يقبل/يبدأ/يُكمل من تطبيقه كالمعتاد.
+// ============================================
+const BK_TTL_SECONDS = 90;
+let bkPickup = null;
+let bkDropoff = null;
+let bkPickMode = null;
+let bkMarkers = {};
+let bkActiveRideId = null;
+let bkSearchTicker = null;
+let bkRounds = { r2: false, r3: false, r4: false };
+let bkPendingStartedAt = null;
+let bkMapBound = false;
+
+window.toggleBookingPanel = function () {
+    const panel = document.getElementById('bookingPanel');
+    const txt = document.getElementById('bookingToggleText');
+    if (!panel) return;
+    const hidden = panel.classList.toggle('d-none');
+    if (txt) txt.textContent = hidden ? 'عرض النموذج' : 'إخفاء النموذج';
+    if (!hidden) {
+        if (!bkMapBound && map) { map.on('click', onBookingMapClick); bkMapBound = true; }
+        const f = document.getElementById('bkName');
+        if (f) setTimeout(() => f.focus(), 250);
+        bkAutoPickup();
+    }
+};
+
+async function bkAutoPickup() {
+    if (!navigator.geolocation || bkPickup) return;
+    try {
+        const pos = await new Promise((res, rej) =>
+            navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000 }));
+        bkPickup = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        bkDrawMarker('pickup', bkPickup);
+        bkFillAddress('pickup', bkPickup);
+        updateBookingFare();
+    } catch (e) {}
+}
+
+window.setBookingPickMode = function (mode) {
+    if (!map) return;
+    if (!bkMapBound) { map.on('click', onBookingMapClick); bkMapBound = true; }
+    bkPickMode = mode;
+    showStatus('bkStatus',
+        mode === 'pickup' ? 'انقر على الخريطة لتحديد نقطة الانطلاق' : 'انقر على الخريطة لتحديد الوجهة', 'success');
+};
+
+function onBookingMapClick(ev) {
+    if (!bkPickMode || !ev.latlng) return;
+    const pt = { lat: ev.latlng.lat, lng: ev.latlng.lng };
+    if (bkPickMode === 'pickup') {
+        bkPickup = pt;
+        bkDrawMarker('pickup', pt);
+        bkFillAddress('pickup', pt);
+    } else {
+        bkDropoff = pt;
+        bkDrawMarker('dropoff', pt);
+        bkFillAddress('dropoff', pt);
+    }
+    bkPickMode = null;
+    updateBookingFare();
+}
+
+function bkDrawMarker(which, pt) {
+    const color = which === 'pickup' ? '#2E7D32' : '#C62828';
+    if (bkMarkers[which]) { bkMarkers[which].setLatLng([pt.lat, pt.lng]); return; }
+    const icon = L.divIcon({
+        className: '',
+        html: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 0 8px rgba(0,0,0,.4);"></div>`
+    });
+    bkMarkers[which] = L.marker([pt.lat, pt.lng], { icon }).addTo(map);
+}
+
+async function bkFillAddress(which, pt) {
+    const input = document.getElementById(which === 'pickup' ? 'bkPickupAddr' : 'bkDropoffAddr');
+    if (!input) return;
+    input.value = 'جاري تحديد العنوان...';
+    const addr = await reverseGeocode(pt.lat, pt.lng);
+    input.value = addr || `موقع على الخريطة (${pt.lat.toFixed(5)}, ${pt.lng.toFixed(5)})`;
+}
+
+async function reverseGeocode(lat, lng) {
+    try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 6000);
+        const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=ar`;
+        const res = await fetch(url, { signal: ctrl.signal });
+        clearTimeout(timer);
+        if (!res.ok) return null;
+        const data = await res.json();
+        return (data && data.display_name) ? data.display_name : null;
+    } catch (e) { return null; }
+}
+
+async function fetchRoadKm(a, b) {
+    try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 6000);
+        const url = `https://router.project-osrm.org/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=false&alternatives=false&steps=false`;
+        const res = await fetch(url, { signal: ctrl.signal });
+        clearTimeout(timer);
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (data.code !== 'Ok' || !data.routes || !data.routes.length) return null;
+        const m = data.routes[0].distance;
+        return (m && m > 0) ? m / 1000 : null;
+    } catch (e) { return null; }
+}
+
+async function bkComputeDistance() {
+    if (!bkPickup || !bkDropoff) return null;
+    const road = await fetchRoadKm(bkPickup, bkDropoff);
+    return road || haversine(bkPickup.lat, bkPickup.lng, bkDropoff.lat, bkDropoff.lng);
+}
+
+function bkPriceFor(vehicle, km) {
+    if (vehicle === 'delivery') {
+        const d = pricingCfg.delivery || {};
+        const prices = d.prices || [300];
+        const base = (km && km > 0)
+            ? bandPrice(km, d.maxKm || [30], prices, d.perExtraKm || 20)
+            : prices[0];
+        const capped = Math.min(base, d.max || 9999);
+        return isNightTime() ? Math.round(capped * (pricingCfg.night.deliveryMultiplier || 1.3)) : capped;
+    }
+    return calculateFare(km);
+}
+
+window.updateBookingFare = async function () {
+    const type = document.querySelector('input[name="bkType"]:checked')?.value || 'fixed';
+    const isOpen = type === 'open';
+    const vehicleEl = document.getElementById('bkVehicle');
+    const dropRow = document.getElementById('bkDropRow');
+    const fareEl = document.getElementById('bkFare');
+    const distEl = document.getElementById('bkDistance');
+    if (vehicleEl) vehicleEl.disabled = isOpen;
+    if (isOpen) {
+        if (vehicleEl) vehicleEl.value = 'car';
+        if (dropRow) dropRow.classList.add('d-none');
+        const open = pricingCfg.open || { start: 75, perHour: 400 };
+        if (fareEl) fareEl.textContent = `${open.start} + ${open.perHour} MRU/ساعة`;
+        if (distEl) distEl.textContent = '—';
+        return;
+    }
+    if (dropRow) dropRow.classList.remove('d-none');
+    if (!vehicleEl) return;
+    const km = await bkComputeDistance();
+    const fare = bkPriceFor(vehicleEl.value, km);
+    if (distEl) distEl.textContent = km ? `${km.toFixed(2)} كم` : '—';
+    if (fareEl) fareEl.textContent = (fare != null) ? `${fare} MRU` : '—';
+};
+
+window.resetBookingForm = function () {
+    ['bkName', 'bkPhone', 'bkPickupAddr', 'bkDropoffAddr'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    bkPickup = null;
+    bkDropoff = null;
+    Object.keys(bkMarkers).forEach(k => { if (bkMarkers[k]) map.removeLayer(bkMarkers[k]); });
+    bkMarkers = {};
+    const fixed = document.getElementById('bkTypeFixed');
+    if (fixed) { fixed.checked = true; }
+    const veh = document.getElementById('bkVehicle');
+    if (veh) { veh.disabled = false; veh.value = 'car'; }
+    const fare = document.getElementById('bkFare');
+    if (fare) fare.textContent = '—';
+    const dist = document.getElementById('bkDistance');
+    if (dist) dist.textContent = '—';
+    const st = document.getElementById('bkSearchStatus');
+    if (st) st.classList.add('d-none');
+    showStatus('bkStatus', '', '');
+};
+
+// فلترة السائقين المطابقين — نفس شروط تطبيق السائق (isOnline، غير محظور،
+// موافق عليه، اشتراك نشط، غير مشغول برحلة، نوع المركبة).
+async function adminFindMatchingDrivers(lat, lng, type, radiusKm, limit) {
+    try {
+        const snap = await db.collection('drivers').where('isOnline', '==', true).get();
+        const results = [];
+        snap.forEach(doc => {
+            const d = doc.data();
+            if (d.disabled === true) return;
+            if (d.registrationApproved !== true) return;
+            const sub = d.subscription;
+            if (!sub || typeof sub !== 'object' || sub.active !== true) return;
+            const current = d.currentRideId;
+            if (typeof current === 'string' && current) return;
+            const vehicle = d.vehicleType || 'car';
+            const role = d.role || 'driver';
+            const isDelivery = vehicle === 'bike' || role === 'delivery';
+            if (type === 'car' && isDelivery) return;
+            if (type === 'delivery' && !isDelivery) return;
+            if (d.lat == null || d.lng == null) return;
+            const dist = haversine(lat, lng, d.lat, d.lng);
+            if (dist > radiusKm) return;
+            results.push({ id: doc.id, name: d.name || '', phone: d.phone || '', lat: d.lat, lng: d.lng, distanceKm: dist, vehicleType: vehicle });
+        });
+        results.sort((a, b) => a.distanceKm - b.distanceKm);
+        return results.slice(0, limit);
+    } catch (e) { return []; }
+}
+
+// كتابة إشعار الرحلة لكل سائق (notifications) بنفس صيغة تطبيق الزبون —
+// sound: 'ride' لفتح نافذة القبول في تطبيق السائق.
+async function bkNotifyDrivers(driverIds, rideId, o) {
+    if (!driverIds.length) return;
+    const batch = db.batch();
+    const ts = firebase.firestore.FieldValue.serverTimestamp();
+    const title = o.type === 'car' ? 'طلب رحلة جديدة' : 'طلب توصيل جديد';
+    const body = o.isOpen
+        ? `جولة مفتوحة — بدء ${Math.round(o.openStart)} + ${Math.round(o.openPerHour)} MRU/ساعة`
+        : `الوجهة: ${o.dropoffAddress} — الثمن: ${Math.round(o.fare)} MRU`;
+    driverIds.forEach(id => {
+        const ref = db.collection('notifications').doc();
+        batch.set(ref, {
+            userId: id,
+            title,
+            body,
+            sound: 'ride',
+            read: false,
+            data: {
+                rideId,
+                type: o.type,
+                fare: o.fare,
+                open: o.isOpen,
+                openStart: o.openStart,
+                openPerHour: o.openPerHour,
+                distanceKm: o.km,
+                pickupLat: o.pickup.lat,
+                pickupLng: o.pickup.lng,
+                pickup: o.pickupAddress,
+                dropoffLat: o.dropoff.lat,
+                dropoffLng: o.dropoff.lng,
+                dropoff: o.dropoffAddress,
+                notes: 'حجز من لوحة التحكم (نيابةً عن الزبون)'
+            },
+            createdAt: ts
+        });
+    });
+    await batch.commit();
+}
+
+window.submitBookingRide = async function () {
+    if (!requireDb('bkStatus')) return;
+    const name = document.getElementById('bkName').value.trim();
+    const phone = document.getElementById('bkPhone').value.trim();
+    const type = document.querySelector('input[name="bkType"]:checked')?.value || 'fixed';
+    const isOpen = type === 'open';
+    const vehicle = document.getElementById('bkVehicle').value;
+    if (!name || !phone) { showStatus('bkStatus', 'أدخل اسم الزبون وهاتفه', 'error'); return; }
+    if (!bkPickup) { showStatus('bkStatus', 'حدد نقطة الانطلاق على الخريطة', 'error'); return; }
+    if (!isOpen && !bkDropoff) { showStatus('bkStatus', 'حدد الوجهة على الخريطة', 'error'); return; }
+
+    const btn = document.getElementById('bkSubmitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>جاري إنشاء الطلب...';
+
+    const km = isOpen ? 0 : ((await bkComputeDistance()) || 0);
+    const open = pricingCfg.open || { start: 75, perHour: 400 };
+    const fare = isOpen ? open.start : bkPriceFor(vehicle, km);
+    const pickupAddress = document.getElementById('bkPickupAddr').value ||
+        `موقع على الخريطة (${bkPickup.lat.toFixed(5)}, ${bkPickup.lng.toFixed(5)})`;
+    const dropoffAddress = isOpen ? ''
+        : (document.getElementById('bkDropoffAddr').value ||
+            `موقع على الخريطة (${bkDropoff.lat.toFixed(5)}, ${bkDropoff.lng.toFixed(5)})`);
+
+    try {
+        const rideRef = await db.collection('rides').add({
+            type: vehicle,
+            rideKind: isOpen ? 'open' : 'fixed',
+            status: 'pending',
+            source: 'admin',
+            passengerName: name,
+            passengerPhone: phone,
+            pickupLat: bkPickup.lat,
+            pickupLng: bkPickup.lng,
+            pickupAddress,
+            dropoffLat: isOpen ? bkPickup.lat : bkDropoff.lat,
+            dropoffLng: isOpen ? bkPickup.lng : bkDropoff.lng,
+            dropoffAddress,
+            distanceKm: km,
+            fare,
+            ...(isOpen ? { openStart: open.start, openPerHour: open.perHour } : {}),
+            notes: 'حجز من لوحة التحكم (نيابةً عن الزبون)',
+            night: isNightTime(),
+            searchRound: 1,
+            reassignments: 0,
+            notifiedDrivers: [],
+            rejectedDrivers: [],
+            expiresAt: firebase.firestore.Timestamp.fromMillis(Date.now() + BK_TTL_SECONDS * 1000),
+            requestedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        markSelfTouched(rideRef.id);
+
+        const drivers = await adminFindMatchingDrivers(bkPickup.lat, bkPickup.lng, vehicle, 3, 5);
+        if (drivers.length === 0) {
+            await rideRef.update({
+                status: 'expired',
+                cancelReason: 'no_drivers',
+                expiredAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            addNotifLog('dispatch', `حجز ${name}: لا سائقين ضمن 3 كم — انتهى`);
+            showStatus('bkStatus', 'لا يوجد سائقون متاحون قريباً — أُلغي الطلب تلقائياً', 'error');
+            resetBookingForm();
+            return;
+        }
+
+        const ids = drivers.map(d => d.id);
+        await bkNotifyDrivers(ids, rideRef.id, {
+            type: vehicle,
+            isOpen,
+            fare,
+            openStart: open.start,
+            openPerHour: open.perHour,
+            km,
+            pickup: bkPickup,
+            dropoff: isOpen ? bkPickup : bkDropoff,
+            pickupAddress,
+            dropoffAddress
+        });
+        await rideRef.update({ notifiedDrivers: ids });
+
+        bkActiveRideId = rideRef.id;
+        bkRounds = { r2: false, r3: false, r4: false };
+        bkPendingStartedAt = Date.now();
+        bkStartSearchTicker(rideRef.id);
+
+        addNotifLog('dispatch',
+            `حجز ${name} (${phone}): ${pickupAddress} ← ${isOpen ? 'جولة مفتوحة' : dropoffAddress}` +
+            ` | ${isOpen ? open.start + ' + ' + open.perHour + '/ساعة' : fare + ' MRU'} | ${ids.length} سائق`);
+        showStatus('bkStatus', `تم إشعار ${ids.length} سائق. البحث جارٍ...`, 'success');
+        resetBookingForm();
+    } catch (err) {
+        showStatus('bkStatus', 'خطأ: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-send-fill me-1"></i>إنشاء الطلب';
+    }
+};
+
+function bkStartSearchTicker(rideId) {
+    bkStopSearchTicker();
+    bkSearchTicker = setInterval(() => bkSearchTick(rideId), 1000);
+}
+
+function bkStopSearchTicker() {
+    if (bkSearchTicker) { clearInterval(bkSearchTicker); bkSearchTicker = null; }
+    const st = document.getElementById('bkSearchStatus');
+    if (st) st.classList.add('d-none');
+}
+
+window.cancelBookingSearch = async function () {
+    const rideId = bkActiveRideId;
+    bkStopSearchTicker();
+    bkActiveRideId = null;
+    if (!rideId) return;
+    try {
+        const snap = await db.collection('rides').doc(rideId).get();
+        if (snap.exists && snap.data().status === 'pending') {
+            await db.collection('rides').doc(rideId).update({
+                status: 'cancelled',
+                cancelReason: 'admin_cancelled',
+                canceledAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+    } catch (e) {}
+    showStatus('bkStatus', 'أُلغي البحث عن سائق', 'success');
+};
+
+async function bkSearchTick(rideId) {
+    try {
+        const snap = await db.collection('rides').doc(rideId).get();
+        if (!snap.exists) { bkStopSearchTicker(); bkActiveRideId = null; return; }
+        const data = snap.data();
+        const status = data.status || '';
+        if (status !== 'pending') {
+            bkStopSearchTicker();
+            bkActiveRideId = null;
+            if (status === 'accepted' || status === 'arrived' || status === 'in_progress') {
+                showStatus('bkStatus', 'قبل السائق الطلب! الرحلة قيد التنفيذ.', 'success');
+            }
+            return;
+        }
+        const expiresAt = data.expiresAt;
+        if (expiresAt && expiresAt.toMillis() <= Date.now()) {
+            bkStopSearchTicker();
+            bkActiveRideId = null;
+            await db.collection('rides').doc(rideId).update({
+                status: 'expired',
+                cancelReason: 'timeout',
+                expiredAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            showStatus('bkStatus', 'انتهت مهلة البحث (90 ث) — لم يتوفر سائق. أُنهي الطلب.', 'error');
+            return;
+        }
+        const elapsed = (Date.now() - (bkPendingStartedAt || Date.now())) / 1000;
+        if (!bkRounds.r2 && elapsed >= 20) { bkRounds.r2 = true; adminSearchRound(rideId, 5, 5); }
+        if (!bkRounds.r3 && elapsed >= 40) { bkRounds.r3 = true; adminSearchRound(rideId, 8, 5); }
+        if (!bkRounds.r4 && elapsed >= 60) { bkRounds.r4 = true; adminSearchRound(rideId, 500, 10); }
+        const count = (data.notifiedDrivers || []).length;
+        const left = Math.max(0, Math.ceil((expiresAt.toMillis() - Date.now()) / 1000));
+        bkShowSearchStatus(`⏳ جاري البحث عن سائق... ${count} سائق أُشعروا | متبقّي ${left} ث`);
+    } catch (e) {}
+}
+
+// جولة بحث إضافية من اللوحة — توسيع النطاق وإشعار سائقين جدد لم يُطلب منهم
+// من قبل (ولا رفضوا). يعيد عدد المُشعَرين.
+async function adminSearchRound(rideId, radiusKm, limit) {
+    try {
+        const snap = await db.collection('rides').doc(rideId).get();
+        if (!snap.exists) return 0;
+        const data = snap.data();
+        if (data.status !== 'pending') return 0;
+        if (data.expiresAt && data.expiresAt.toMillis() <= Date.now()) return 0;
+        const seen = new Set((data.notifiedDrivers || []).concat(data.rejectedDrivers || []));
+        const type = data.type;
+        const drivers = await adminFindMatchingDrivers(data.pickupLat, data.pickupLng, type, radiusKm, limit);
+        const fresh = drivers.filter(d => !seen.has(d.id));
+        if (!fresh.length) return 0;
+        const ids = fresh.map(d => d.id);
+        const isOpen = data.rideKind === 'open';
+        const openStart = data.openStart || 75;
+        const openPerHour = data.openPerHour || 400;
+        await bkNotifyDrivers(ids, rideId, {
+            type,
+            isOpen,
+            fare: data.fare,
+            openStart,
+            openPerHour,
+            km: data.distanceKm,
+            pickup: { lat: data.pickupLat, lng: data.pickupLng },
+            dropoff: { lat: data.dropoffLat, lng: data.dropoffLng },
+            pickupAddress: data.pickupAddress || '',
+            dropoffAddress: data.dropoffAddress || ''
+        });
+        await db.collection('rides').doc(rideId).update({
+            notifiedDrivers: firebase.firestore.FieldValue.arrayUnion(ids),
+            searchRound: firebase.firestore.FieldValue.increment(1)
+        });
+        return ids.length;
+    } catch (e) { return 0; }
+}
+
+function bkShowSearchStatus(text) {
+    const st = document.getElementById('bkSearchStatus');
+    const t = document.getElementById('bkSearchText');
+    if (!st || !t) return;
+    st.classList.remove('d-none');
+    t.textContent = text;
+}
