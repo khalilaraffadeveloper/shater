@@ -281,10 +281,6 @@
                             <strong class="stat-value text-primary" id="statTodayRides">0</strong>
                         </div>
                         <div class="stat-item flex-fill px-1 py-1 text-center">
-                            <small class="stat-label text-muted d-block">إجمالي العمولات</small>
-                            <strong class="stat-value text-danger" id="statTotalComm">0 <small>MRU</small></strong>
-                        </div>
-                        <div class="stat-item flex-fill px-1 py-1 text-center">
                             <small class="stat-label text-muted d-block">إجمالي الرحلات</small>
                             <strong class="stat-value text-dark-blue" id="statTotalRides">0</strong>
                         </div>
@@ -369,7 +365,7 @@
                             <div class="card-header bg-white fw-bold"><i class="bi bi-table me-1"></i>ملخص يومي</div>
                             <div class="table-responsive" style="max-height:380px">
                                 <table class="table table-sm table-hover align-middle mb-0">
-                                    <thead><tr><th>التاريخ</th><th>الرحلات</th><th>إيراد الرحلات</th><th>العمولات</th><th>التوصيل</th><th>الاشتراكات المقبولة</th></tr></thead>
+                                    <thead><tr><th>التاريخ</th><th>الرحلات</th><th>إيراد الرحلات</th><th>التوصيل</th><th>الاشتراكات المقبولة</th></tr></thead>
                                     <tbody id="reportDailyTable"></tbody>
                                 </table>
                             </div>
@@ -841,7 +837,6 @@
                                         <th>نوع الرحلة</th>
                                         <th>المسافة</th>
                                         <th>السعر</th>
-                                        <th>العمولة</th>
                                         <th>اسم السائق</th>
                                         <th class="d-none d-lg-table-cell">هاتف السائق</th>
                                         <th>الحالة</th>
@@ -850,7 +845,7 @@
                                     </tr>
                                 </thead>
                                 <tbody id="ridesTableBody">
-                                    <tr><td colspan="13" class="text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل الرحلات...</div></td></tr>
+                                    <tr><td colspan="12" class="text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل الرحلات...</div></td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -863,36 +858,6 @@
         <div class="page-content d-none" id="page-settings">
             <div class="container-fluid p-3 p-md-4">
                 <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="card shadow-sm border-0 h-100">
-                            <div class="card-header bg-white border-bottom">
-                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-percent text-gold me-2"></i>النسبة المقتطعة (العمولة)</h6>
-                            </div>
-                            <div class="card-body text-center">
-                                <div class="display-4 fw-bold text-gold my-3" id="currentCommission">10%</div>
-                                <p class="text-muted small">النسبة المقتطعة من كل رحلة تلقائياً</p>
-                                <div class="input-group">
-                                    <input type="number" class="form-control text-center fw-bold" id="newCommission" min="0" max="100" placeholder="النسبة %">
-                                    <button class="btn btn-dark-blue text-white fw-bold" onclick="saveCommission()">حفظ</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card shadow-sm border-0 h-100">
-                            <div class="card-header bg-white border-bottom">
-                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-percent text-gold me-2"></i>عمولة طلبات الزبون</h6>
-                            </div>
-                            <div class="card-body text-center">
-                                <div class="display-4 fw-bold text-gold my-3" id="currentCustomerCommission">5%</div>
-                                <p class="text-muted small">النسبة المخصومة من رصيد الزبون عند قبوله سعر التوصيل</p>
-                                <div class="input-group">
-                                    <input type="number" class="form-control text-center fw-bold" id="newCustomerCommission" min="0" max="100" placeholder="النسبة %">
-                                    <button class="btn btn-dark-blue text-white fw-bold" onclick="saveCustomerCommission()">حفظ</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                     <div class="col-12 admin-only">
                         <div class="card shadow-sm border-0">
                             <div class="card-header bg-white border-bottom">
@@ -2155,7 +2120,7 @@
             load(0);
         })();
     </script>
-    <script src="js/app.js?v=20260813k"></script>
+    <script src="js/app.js?v=20260813l"></script>
 </body>
 </html>
 

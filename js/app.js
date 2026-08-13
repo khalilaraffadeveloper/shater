@@ -5,7 +5,7 @@
 
 let db = null;
 let firebaseReady = false;
-let commissionPercent = 10;
+
 
 // ============================================
 // CUSTOMER PRODUCTS (realtime cache)
@@ -838,7 +838,7 @@ function navigateToPage(page) {
     if (page === 'deliveries') initDeliveriesListener();
     if (page === 'unregistered-customers') loadUnregisteredCustomers();
     if (page === 'rides') loadRidesList();
-    if (page === 'settings') { loadCommission(); loadPricingConfig(); }
+    if (page === 'settings') { loadPricingConfig(); }
     if (page === 'admins') loadAdminsList();
     if (page === 'messages') { loadMsgRecipients(); loadSentMessages(); loadSentCustomerMessages(); }
     if (page === 'announcements') loadAnnouncements();
@@ -861,69 +861,6 @@ document.querySelectorAll('.sidebar-link').forEach(item => {
 
 // Initial page load: التوجيه التلقائي لأول صفحة يملك المستخدم صلاحية الوصول إليها
 goToDefaultPage();
-
-// ============================================
-// COMMISSION
-// ============================================
-async function loadCommission() {
-    if (!requireDb()) return;
-    try {
-        const doc = await db.collection('settings').doc('app_config').get();
-        if (doc.exists) commissionPercent = doc.data().commissionPercent || 10;
-        document.getElementById('currentCommission').textContent = `${commissionPercent}%`;
-        document.getElementById('newCommission').value = commissionPercent;
-    } catch (e) {
-        console.log('Commission load error');
-    }
-}
-
-window.saveCommission = async function () {
-    if (!requireDb()) return;
-    const val = parseFloat(document.getElementById('newCommission').value);
-    if (isNaN(val) || val < 0 || val > 100) {
-        ARAalert('يرجى إدخال نسبة صحيحة (0-100)', 'warning');
-        return;
-    }
-    try {
-        await db.collection('settings').doc('app_config').set({ commissionPercent: val }, { merge: true });
-        commissionPercent = val;
-        document.getElementById('currentCommission').textContent = `${val}%`;
-        ARAalert('تم حفظ النسبة بنجاح', 'success');
-    } catch (e) {
-        ARAalert('خطأ: ' + e.message, 'error');
-    }
-};
-
-// ============================================
-// CUSTOMER RIDE COMMISSION (المخصومة من رصيد الزبون عند قبول السعر)
-// ============================================
-async function loadCustomerCommission() {
-    if (!requireDb()) return;
-    try {
-        const doc = await db.collection('settings').doc('app_config').get();
-        const pct = doc.exists ? (doc.data().customerRideCommissionPercent || 5) : 5;
-        document.getElementById('currentCustomerCommission').textContent = `${pct}%`;
-        document.getElementById('newCustomerCommission').value = pct;
-    } catch (e) {
-        console.log('Customer commission load error');
-    }
-}
-
-window.saveCustomerCommission = async function () {
-    if (!requireDb()) return;
-    const val = parseFloat(document.getElementById('newCustomerCommission').value);
-    if (isNaN(val) || val < 0 || val > 100) {
-        ARAalert('يرجى إدخال نسبة صحيحة (0-100)', 'warning');
-        return;
-    }
-    try {
-        await db.collection('settings').doc('app_config').set({ customerRideCommissionPercent: val }, { merge: true });
-        document.getElementById('currentCustomerCommission').textContent = `${val}%`;
-        ARAalert('تم حفظ نسبة عمولة الزبون بنجاح', 'success');
-    } catch (e) {
-        ARAalert('خطأ: ' + e.message, 'error');
-    }
-};
 
 // ============================================
 // DIGITS + DATE HELPERS
@@ -2802,8 +2739,6 @@ function renderRidesList(rides) {
     tbody.innerHTML = rides.map(r => {
         const created = r.createdAt?.toDate ? fmtDate(r.createdAt.toDate()) : '-';
         const fare = r.finalPrice || r.fare || 0;
-        const comm = r.commissionAmount || Math.round(fare * commissionPercent / 100);
-        const commPct = r.commissionPercent || commissionPercent;
         const dist = r.realDistanceKm ? `${r.realDistanceKm} كم` : '-';
         const isOpen = r.rideKind === 'open' || r.rideType === 'open';
         const rideTypeBadge = isOpen
@@ -2824,7 +2759,6 @@ function renderRidesList(rides) {
             <td>${rideTypeBadge}</td>
             <td><small>${dist}</small></td>
             <td><strong>${fare}</strong> MRU</td>
-            <td><strong class="text-danger">${comm}</strong> MRU <small class="text-muted">(${commPct}%)</small></td>
             <td><strong>${driverName}</strong></td>
             <td class="d-none d-lg-table-cell"><small dir="ltr">${driverPhone}</small></td>
             <td><span class="badge bg-${colors[r.status] || 'secondary'}">${labels[r.status] || r.status}</span></td>
@@ -3086,28 +3020,15 @@ async function loadStats() {
             .where('createdAt', '>=', todayTs).get();
         document.getElementById('statTodayRides').textContent = todayRidesSnap.size;
 
-        let totalComm = 0;
-        let cancelledComm = 0;
         let totalRidesCount = 0;
         let activeCount = 0;
-        let completedCount = 0;
         const allRidesSnap = await db.collection('rides').get();
         allRidesSnap.forEach(doc => {
             const r = doc.data();
             totalRidesCount++;
-            if (r.status === 'completed') {
-                completedCount++;
-                if (r.commissionAmount) totalComm += r.commissionAmount;
-            } else if (r.status === 'cancelled' && (r.cancelledBy === 'driver' || r.cancelledBy === 'driver_cancel')) {
-                if (r.commissionAmount) {
-                    totalComm += r.commissionAmount;
-                    cancelledComm += r.commissionAmount;
-                }
-            }
             if (r.status === 'accepted' || r.status === 'in_progress') activeCount++;
         });
         document.getElementById('statTotalRides').textContent = totalRidesCount;
-        document.getElementById('statTotalComm').innerHTML = `${totalComm} <small>MRU</small>${cancelledComm > 0 ? `<br><small class="d-block" style="font-size:10px;color:#e53935;">منها ${cancelledComm} MRU من رحلات ألغاها السائق</small>` : ''}`;
         document.getElementById('statActiveRides').textContent = activeCount;
 
         const custSnap = await db.collection('customers').get();
@@ -3132,15 +3053,14 @@ window.exportDriversCSV = function () {
 
 window.exportRidesCSV = function () {
     if (allRides.length === 0) { ARAalert('لا توجد رحلات للتصدير', 'info'); return; }
-    let csv = '\uFEFF' + 'الزبون,هاتف الزبون,نقطة الانطلاق,الوجهة,المسافة,السعر,العمولة,اسم السائق,هاتف السائق,الحالة,التاريخ\n';
+    let csv = '\uFEFF' + 'الزبون,هاتف الزبون,نقطة الانطلاق,الوجهة,المسافة,السعر,اسم السائق,هاتف السائق,الحالة,التاريخ\n';
     allRides.forEach(r => {
         const created = r.createdAt?.toDate ? fmtDate(r.createdAt.toDate()) : '';
         const fare = r.finalPrice || r.fare || 0;
-        const comm = r.commissionAmount || Math.round(fare * commissionPercent / 100);
         const driver = r.assignedDriverId ? (driversInfoCache[r.assignedDriverId] || null) : null;
         const driverName = driver ? driver.name : '';
         const driverPhone = driver ? driver.phone : '';
-        csv += `${r.passengerName||''},${r.passengerPhone||''},${r.pickupAddress||''},${r.dropoffAddress||''},${r.realDistanceKm||''},${fare},${comm},${driverName},${driverPhone},${r.status||''},${created}\n`;
+        csv += `${r.passengerName||''},${r.passengerPhone||''},${r.pickupAddress||''},${r.dropoffAddress||''},${r.realDistanceKm||''},${fare},${driverName},${driverPhone},${r.status||''},${created}\n`;
     });
     downloadCSV(csv, 'shater_rides.csv');
 };
@@ -4163,7 +4083,7 @@ const FN_PERM = {
     clearStoreLocation: 'stores', confirmResetAllData: 'settings',
     exportCustomersCSV: 'customers', exportDriversCSV: 'drivers', exportRidesCSV: 'rides',
     exportUnregisteredCustomersCSV: 'unregistered',
-    openStoreMapPicker: 'stores', saveCommission: 'settings', saveCustomerCommission: 'settings',
+    openStoreMapPicker: 'stores',
     searchCustomerProfile: 'customers', searchDriverByPhone: 'drivers',
     sendAnnouncement: 'announcements', sendCustomerAnnouncement: 'customer_announcements',
     setServiceForAll: 'drivers_service',
@@ -4606,8 +4526,6 @@ function initDashboard() {
     setTimeout(() => { if (map) map.invalidateSize(); }, 350);
     setTimeout(() => {
         syncNouakchottPlaces();
-        loadCommission();
-        loadCustomerCommission();
         loadPricingConfig();
         loadStats();
         initRealtimeListeners();
@@ -5156,11 +5074,6 @@ async function loadReports() {
     if (!body) return;
     body.innerHTML = '<div class="col-12 text-center text-muted py-5"><i class="bi bi-hourglass-split me-2"></i>جاري تجميع البيانات...</div>';
     try {
-        try {
-            const cfg = await db.collection('settings').doc('app_config').get();
-            if (cfg.exists) commissionPercent = cfg.data().commissionPercent || 10;
-        } catch (e) {}
-
         const to = reportCustomTo || new Date();
         if (!reportCustomTo) to.setHours(23, 59, 59, 999);
         let from = reportCustomFrom;
@@ -5196,11 +5109,11 @@ async function loadReports() {
         const pushDay = (t, cb) => {
             if (!t) return;
             const key = reportDayKey(t);
-            if (!dayMap[key]) dayMap[key] = { key, rides: 0, fare: 0, comm: 0, deliveries: 0, delFare: 0, recharge: 0 };
+            if (!dayMap[key]) dayMap[key] = { key, rides: 0, fare: 0, deliveries: 0, delFare: 0, recharge: 0 };
             cb(dayMap[key]);
         };
 
-        let totalRides = 0, completedRides = 0, totalFare = 0, totalComm = 0;
+        let totalRides = 0, completedRides = 0, totalFare = 0;
         let totalDel = 0, delFare = 0, totalRecharge = 0;
         const uniqCustomers = new Set();
 
@@ -5210,15 +5123,13 @@ async function loadReports() {
             if (!t) return;
             if (to && t > to) return;
             const fare = parseFloat(r.fare) || 0;
-            const comm = r.commissionAmount != null ? (parseFloat(r.commissionAmount) || 0) : Math.round(fare * commissionPercent / 100);
             const st = r.status || 'unknown';
             statusCount[st] = (statusCount[st] || 0) + 1;
             totalRides++;
             totalFare += fare;
-            totalComm += comm;
             if (st === 'completed') completedRides++;
             if (r.passengerPhone) uniqCustomers.add(r.passengerPhone);
-            pushDay(t, x => { x.rides++; x.fare += fare; x.comm += comm; });
+            pushDay(t, x => { x.rides++; x.fare += fare; });
             if (r.driverId) {
                 if (!driverAgg[r.driverId]) driverAgg[r.driverId] = { id: r.driverId, rides: 0, fare: 0 };
                 driverAgg[r.driverId].rides++;
@@ -5252,7 +5163,6 @@ async function loadReports() {
             { label: 'إجمالي الرحلات', value: fmtNum(totalRides.toLocaleString('en-US')), icon: 'bi-journal-text', color: 'text-dark-blue' },
             { label: 'رحلات مكتملة', value: fmtNum(completedRides.toLocaleString('en-US')), icon: 'bi-check-circle', color: 'text-success' },
             { label: 'إيراد الرحلات (MRU)', value: reportMoney(totalFare), icon: 'bi-cash-stack', color: 'text-primary' },
-            { label: 'العمولات (MRU)', value: reportMoney(totalComm), icon: 'bi-percent', color: 'text-danger' },
             { label: 'طلبات التوصيل', value: fmtNum(totalDel.toLocaleString('en-US')), icon: 'bi-truck', color: 'text-warning' },
             { label: 'إيراد التوصيل (MRU)', value: reportMoney(delFare), icon: 'bi-cash', color: 'text-warning' },
             { label: 'إيراد الاشتراكات المقبولة (MRU)', value: reportMoney(totalRecharge), icon: 'bi-credit-card', color: 'text-success' },
@@ -5269,7 +5179,7 @@ async function loadReports() {
 
         const days = Object.keys(dayMap).sort((a, b) =>
             a.split('/').reverse().join('-').localeCompare(b.split('/').reverse().join('-')));
-        renderDailyChart(days, days.map(d => dayMap[d].rides), days.map(d => Math.round(dayMap[d].fare)), days.map(d => Math.round(dayMap[d].comm)));
+        renderDailyChart(days, days.map(d => dayMap[d].rides), days.map(d => Math.round(dayMap[d].fare)));
         renderStatusChart(statusCount);
 
         const topDrivers = Object.values(driverAgg).sort((a, b) => b.fare - a.fare).slice(0, 10);
@@ -5296,11 +5206,10 @@ async function loadReports() {
                     <td>${escapeHtmlStr(d)}</td>
                     <td>${fmtNum(x.rides.toLocaleString('en-US'))}</td>
                     <td>${reportMoney(x.fare)} MRU</td>
-                    <td>${reportMoney(x.comm)} MRU</td>
                     <td>${fmtNum(x.deliveries.toLocaleString('en-US'))} (${reportMoney(x.delFare)})</td>
                     <td>${reportMoney(x.recharge)} MRU</td>
                 </tr>`;
-            }).join('') || '<tr><td colspan="6" class="text-center text-muted py-3">لا توجد بيانات في هذه الفترة</td></tr>';
+            }).join('') || '<tr><td colspan="5" class="text-center text-muted py-3">لا توجد بيانات في هذه الفترة</td></tr>';
         }
     } catch (e) {
         console.error('Report error:', e);
@@ -5308,7 +5217,7 @@ async function loadReports() {
     }
 }
 
-function renderDailyChart(labels, ridesData, fareData, commData) {
+function renderDailyChart(labels, ridesData, fareData) {
     const ctx = document.getElementById('reportDailyChart');
     if (!ctx) return;
     if (reportCharts.daily) reportCharts.daily.destroy();
@@ -5318,8 +5227,7 @@ function renderDailyChart(labels, ridesData, fareData, commData) {
             labels,
             datasets: [
                 { label: 'الرحلات', data: ridesData, backgroundColor: 'rgba(47,125,246,0.7)', borderRadius: 4, yAxisID: 'y' },
-                { label: 'الإيراد (MRU)', data: fareData, backgroundColor: 'rgba(22,199,154,0.7)', borderRadius: 4, yAxisID: 'y1' },
-                { label: 'العمولات (MRU)', data: commData, backgroundColor: 'rgba(240,72,62,0.7)', borderRadius: 4, yAxisID: 'y1' }
+                { label: 'الإيراد (MRU)', data: fareData, backgroundColor: 'rgba(22,199,154,0.7)', borderRadius: 4, yAxisID: 'y1' }
             ]
         },
         options: {
