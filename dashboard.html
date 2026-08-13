@@ -825,6 +825,77 @@
                             </div>
                         </div>
                     </div>
+                    <div class="col-12 admin-only">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom">
+                                <h6 class="fw-bold mb-0 text-dark-blue"><i class="bi bi-cash-coin text-gold me-2"></i>إعدادات التسعير (شرائح المسافة — تنافسية)</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-info py-2 small mb-3">الأسعار الافتراضية مخصومة ~5% لتنافس ClassRide ومقرّبة لأقرب 5 أوقية. تُطبَّق على التطبيق واللوحة معاً فور الحفظ — لا حاجة لإعادة بناء APK.</div>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <h6 class="fw-bold text-dark-blue mb-2"><i class="bi bi-car-front-fill me-1"></i>سيارة 🚗</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered align-middle mb-2">
+                                                <thead><tr class="table-light"><th class="text-center">حتى كم</th><th class="text-center">السعر (MRU)</th></tr></thead>
+                                                <tbody>
+                                                    <tr><td><input type="number" min="0" class="form-control form-control-sm text-center" id="carMaxKm1"></td><td><input type="number" min="0" class="form-control form-control-sm text-center" id="carPrice1"></td></tr>
+                                                    <tr><td><input type="number" min="0" class="form-control form-control-sm text-center" id="carMaxKm2"></td><td><input type="number" min="0" class="form-control form-control-sm text-center" id="carPrice2"></td></tr>
+                                                    <tr><td><input type="number" min="0" class="form-control form-control-sm text-center" id="carMaxKm3"></td><td><input type="number" min="0" class="form-control form-control-sm text-center" id="carPrice3"></td></tr>
+                                                    <tr><td><input type="number" min="0" class="form-control form-control-sm text-center" id="carMaxKm4"></td><td><input type="number" min="0" class="form-control form-control-sm text-center" id="carPrice4"></td></tr>
+                                                    <tr><td><input type="number" min="0" class="form-control form-control-sm text-center" id="carMaxKm5"></td><td><input type="number" min="0" class="form-control form-control-sm text-center" id="carPrice5"></td></tr>
+                                                    <tr><td><input type="number" min="0" class="form-control form-control-sm text-center" id="carMaxKm6"></td><td><input type="number" min="0" class="form-control form-control-sm text-center" id="carPrice6"></td></tr>
+                                                    <tr><td><input type="number" min="0" class="form-control form-control-sm text-center" id="carMaxKm7"></td><td><input type="number" min="0" class="form-control form-control-sm text-center" id="carPrice7"></td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="col-6"><label class="form-label small mb-1">إضافي لكل كم بعد الأخيرة</label><input type="number" min="0" class="form-control form-control-sm" id="carPerExtraKm"></div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="fw-bold text-dark-blue mb-2"><i class="bi bi-bicycle me-1"></i>توصيل 🛵</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered align-middle mb-2">
+                                                <thead><tr class="table-light"><th class="text-center">حتى كم</th><th class="text-center">السعر (MRU)</th></tr></thead>
+                                                <tbody>
+                                                    <tr><td><input type="number" min="0" class="form-control form-control-sm text-center" id="delMaxKm1"></td><td><input type="number" min="0" class="form-control form-control-sm text-center" id="delPrice1"></td></tr>
+                                                    <tr><td><input type="number" min="0" class="form-control form-control-sm text-center" id="delMaxKm2"></td><td><input type="number" min="0" class="form-control form-control-sm text-center" id="delPrice2"></td></tr>
+                                                    <tr><td><input type="number" min="0" class="form-control form-control-sm text-center" id="delMaxKm3"></td><td><input type="number" min="0" class="form-control form-control-sm text-center" id="delPrice3"></td></tr>
+                                                    <tr><td><input type="number" min="0" class="form-control form-control-sm text-center" id="delMaxKm4"></td><td><input type="number" min="0" class="form-control form-control-sm text-center" id="delPrice4"></td></tr>
+                                                    <tr><td><input type="number" min="0" class="form-control form-control-sm text-center" id="delMaxKm5"></td><td><input type="number" min="0" class="form-control form-control-sm text-center" id="delPrice5"></td></tr>
+                                                    <tr><td><input type="number" min="0" class="form-control form-control-sm text-center" id="delMaxKm6"></td><td><input type="number" min="0" class="form-control form-control-sm text-center" id="delPrice6"></td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="row g-2">
+                                            <div class="col-6"><label class="form-label small mb-1">إضافي لكل كم بعد الأخيرة</label><input type="number" min="0" class="form-control form-control-sm" id="delPerExtraKm"></div>
+                                            <div class="col-6"><label class="form-label small mb-1">السقف الأقصى (MRU)</label><input type="number" min="0" class="form-control form-control-sm" id="delMax"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row g-3 mt-1">
+                                    <div class="col-md-6">
+                                        <h6 class="fw-bold text-dark-blue mb-2"><i class="bi bi-moon-stars-fill me-1"></i>الليل (بالساعة)</h6>
+                                        <div class="row g-2">
+                                            <div class="col-3"><label class="form-label small mb-1">من ساعة</label><input type="number" min="0" max="23" class="form-control form-control-sm" id="nightStart"></div>
+                                            <div class="col-3"><label class="form-label small mb-1">حتى ساعة</label><input type="number" min="0" max="23" class="form-control form-control-sm" id="nightEnd"></div>
+                                            <div class="col-3"><label class="form-label small mb-1">سيارة ×</label><input type="number" min="0" step="0.1" class="form-control form-control-sm" id="carMult"></div>
+                                            <div class="col-3"><label class="form-label small mb-1">توصيل ×</label><input type="number" min="0" step="0.1" class="form-control form-control-sm" id="delMult"></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="fw-bold text-dark-blue mb-2"><i class="bi bi-stopwatch-fill me-1"></i>المؤقت (رحلة مفتوحة)</h6>
+                                        <div class="row g-2">
+                                            <div class="col-3"><label class="form-label small mb-1">بدء المؤقت</label><input type="number" min="0" class="form-control form-control-sm" id="timerStart"></div>
+                                            <div class="col-3"><label class="form-label small mb-1">أوقية/كم</label><input type="number" min="0" class="form-control form-control-sm" id="timerPerKm"></div>
+                                            <div class="col-3"><label class="form-label small mb-1">خطوة /5د</label><input type="number" min="0" class="form-control form-control-sm" id="timerStep"></div>
+                                            <div class="col-3"><label class="form-label small mb-1">دقائق الخطوة</label><input type="number" min="1" class="form-control form-control-sm" id="timerStepMin"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="btn btn-dark-blue text-white fw-bold mt-3" onclick="savePricingConfig()"><i class="bi bi-check-lg me-1"></i>حفظ إعدادات التسعير</button>
+                            </div>
+                        </div>
+                    </div>
                     <div class="col-md-6">
                         <div class="card shadow-sm border-0 h-100">
                             <div class="card-header bg-white border-bottom">
@@ -1914,7 +1985,7 @@
                     <input type="radio" class="btn-check" name="rideType" id="rideTypeOpen" value="open">
                     <label class="btn btn-outline-dark-blue" for="rideTypeOpen"><i class="bi bi-stopwatch-fill me-1"></i>مفتوحة (بالوقت)</label>
                 </div>
-                <small class="text-muted d-block mt-1" id="rideTypeHint">تُحسب من المسافة: 50 انطلاق + 20/كم، حد أدنى 100</small>
+                <small class="text-muted d-block mt-1" id="rideTypeHint">تُحسب من المسافة بالشرائح: 65 حتى 1كم، حتى 425 عند 30كم</small>
             </div>
             <div class="mb-3" id="distanceInfo" style="display:none;">
                 <div class="bg-light rounded-3 p-3 text-center">
@@ -1926,7 +1997,7 @@
             </div>
             <div class="mb-3">
                 <label class="form-label fw-bold">سعر الرحلة (MRU)</label>
-                <input type="text" inputmode="numeric" class="form-control fw-bold text-center" id="fareInput" value="100" dir="ltr" placeholder="أدخل السعر" tabindex="-1">
+                <input type="text" inputmode="numeric" class="form-control fw-bold text-center" id="fareInput" value="65" dir="ltr" placeholder="أدخل السعر" tabindex="-1">
                 <small class="text-muted" id="fareInputHint">السعر التلقائي للرحلة المحددة. يمكنك تعديله يدوياً.</small>
             </div>
             <button class="btn btn-gold text-white fw-bold w-100 py-3" id="dispatchBtn" disabled>
@@ -2152,7 +2223,7 @@
             load(0);
         })();
     </script>
-    <script src="js/app.js?v=20260812n"></script>
+    <script src="js/app.js?v=20260813a"></script>
 </body>
 </html>
 

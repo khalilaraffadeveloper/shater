@@ -392,40 +392,142 @@ let driversInfoCache = {};
 let currentPage = 'map';
 
 // ============================================
-// PRICING CONFIG  (نموذج شاطر الفاخر — وسط السوق)
-// رحلة محددة (بالكيلومتر): 50 انطلاق + 20/كم، حد أدنى 100
-// رحلة مفتوحة (بالوقت لحظياً): 4 أوقية/دقيقة، حد أدنى 100
-// الليل (بعد 00:00): +15%
+// PRICING CONFIG  (قابل للضبط من صفحة الإعدادات — مطابق لخوارزمية التطبيق)
+// الأسعار الافتراضية مخصومة ~5% لتنافس ClassRide ومقرّبة لأقرب 5 أوقية.
+// التخزين: settings/app_config → pricing  (تُحمَّل في loadPricingConfig)
+// سيارة: 1كم=65، 3كم=95، 5كم=125، 8كم=160، 12كم=220، 20كم=305، 30كم=425، +19/كم
+// توصيل: 1كم=85، 3كم=105، 5كم=125، 8كم=150، 12كم=190، 20كم=240، سقف 250
+// الليل (00:00–05:00): سيارة ×1.5، توصيل ×1.3
+// المؤقت (مفتوح): بدء 75 + 10/كم + 15 لكل 5 دقائق
 // ============================================
-const BASE_FARE = 50;      // انطلاق الرحلة المحددة
-const PER_KM = 20;         // أوقية لكل كيلومتر
-const MIN_FARE = 100;      // حد أدنى عام
-const OPEN_PER_MIN = 4;    // أوقية لكل دقيقة (الرحلة المفتوحة)
-const OPEN_MIN = 100;      // حد أدنى للرحلة المفتوحة
-const NIGHT_MULT = 1.15;   // +15% بعد منتصف الليل
+let pricingCfg = {
+    car: { maxKm: [1, 3, 5, 8, 12, 20, 30], prices: [65, 95, 125, 160, 220, 305, 425], perExtraKm: 19 },
+    delivery: { maxKm: [1, 3, 5, 8, 12, 20], prices: [85, 105, 125, 150, 190, 240], perExtraKm: 20, max: 250 },
+    night: { startHour: 0, endHour: 5, carMultiplier: 1.5, deliveryMultiplier: 1.3 },
+    timer: { start: 75, perKm: 10, step: 15, stepMinutes: 5 }
+};
+
+function deepMerge(base, over) {
+    if (typeof over !== 'object' || over === null) return over === undefined ? base : over;
+    if (Array.isArray(over)) return over;
+    const out = { ...base };
+    for (const k of Object.keys(over)) out[k] = deepMerge(base[k], over[k]);
+    return out;
+}
+
+async function loadPricingConfig() {
+    if (!db) return;
+    try {
+        const doc = await db.collection('settings').doc('app_config').get();
+        const p = doc.exists ? doc.data().pricing : null;
+        if (p && typeof p === 'object') pricingCfg = deepMerge(pricingCfg, p);
+        fillPricingSettingsForm();
+    } catch (e) { console.log('Pricing config load error'); }
+}
+
+function bandPrice(km, maxKm, prices, perKm) {
+    for (let i = 0; i < maxKm.length; i++) if (km <= maxKm[i]) return prices[i];
+    const last = maxKm.length - 1;
+    return prices[last] + (km - maxKm[last]) * perKm;
+}
 
 function isNightTime() {
     const h = new Date().getHours();
-    return h === 0;
+    return h >= pricingCfg.night.startHour && h < pricingCfg.night.endHour;
 }
 
 function applyNight(amount) {
-    return isNightTime() ? Math.round(amount * NIGHT_MULT) : amount;
+    return isNightTime() ? Math.round(amount * pricingCfg.night.carMultiplier) : amount;
 }
 
 function calculateFare(distanceKm) {
-    if (!distanceKm || distanceKm <= 0) return applyNight(MIN_FARE);
-    return applyNight(Math.max(MIN_FARE, Math.round(BASE_FARE + (distanceKm * PER_KM))));
+    if (!distanceKm || distanceKm <= 0) return applyNight(pricingCfg.car.prices[0]);
+    return applyNight(Math.round(bandPrice(distanceKm, pricingCfg.car.maxKm, pricingCfg.car.prices, pricingCfg.car.perExtraKm)));
 }
 
-function calculateOpenFare(minutes) {
-    if (!minutes || minutes <= 0) return applyNight(OPEN_MIN);
-    return applyNight(Math.max(OPEN_MIN, Math.round(minutes * OPEN_PER_MIN)));
+function calculateOpenFare(minutes, km) {
+    const t = pricingCfg.timer;
+    if (!minutes || minutes <= 0) return applyNight(t.start);
+    let price = t.start + (km || 0) * t.perKm;
+    const seconds = minutes * 60;
+    if (seconds > 60) {
+        const blocks = Math.ceil((seconds - 60) / (t.stepMinutes * 60));
+        price += blocks * t.step;
+    }
+    return applyNight(Math.round(price));
 }
 
 function roundFare5(n) { return Math.round(n / 5) * 5; }
 
 function formatRideType(t) { return t === 'open' ? 'مفتوحة (بالوقت)' : 'محددة (بالكيلومتر)'; }
+
+// ============================================
+// PRICING SETTINGS (إعدادات التسعير من صفحة الإعدادات)
+// ============================================
+function fillPricingSettingsForm() {
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+    const c = pricingCfg;
+    c.car.maxKm.forEach((v, i) => set('carMaxKm' + (i + 1), v));
+    c.car.prices.forEach((v, i) => set('carPrice' + (i + 1), v));
+    set('carPerExtraKm', c.car.perExtraKm);
+    c.delivery.maxKm.forEach((v, i) => set('delMaxKm' + (i + 1), v));
+    c.delivery.prices.forEach((v, i) => set('delPrice' + (i + 1), v));
+    set('delPerExtraKm', c.delivery.perExtraKm);
+    set('delMax', c.delivery.max);
+    set('nightStart', c.night.startHour);
+    set('nightEnd', c.night.endHour);
+    set('carMult', c.night.carMultiplier);
+    set('delMult', c.night.deliveryMultiplier);
+    set('timerStart', c.timer.start);
+    set('timerPerKm', c.timer.perKm);
+    set('timerStep', c.timer.step);
+    set('timerStepMin', c.timer.stepMinutes);
+}
+
+window.savePricingConfig = async function () {
+    if (!requireDb()) return;
+    const num = (id, d) => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? d : v; };
+    const carMax = [1, 3, 5, 8, 12, 20, 30];
+    const carPr = [65, 95, 125, 160, 220, 305, 425];
+    const delMax = [1, 3, 5, 8, 12, 20];
+    const delPr = [85, 105, 125, 150, 190, 240];
+    const cfg = {
+        pricing: {
+            car: {
+                maxKm: carMax.map((_, i) => num('carMaxKm' + (i + 1), carMax[i])),
+                prices: carPr.map((_, i) => num('carPrice' + (i + 1), carPr[i])),
+                perExtraKm: num('carPerExtraKm', 19)
+            },
+            delivery: {
+                maxKm: delMax.map((_, i) => num('delMaxKm' + (i + 1), delMax[i])),
+                prices: delPr.map((_, i) => num('delPrice' + (i + 1), delPr[i])),
+                perExtraKm: num('delPerExtraKm', 20),
+                max: num('delMax', 250)
+            },
+            night: {
+                startHour: num('nightStart', 0),
+                endHour: num('nightEnd', 5),
+                carMultiplier: num('carMult', 1.5),
+                deliveryMultiplier: num('delMult', 1.3)
+            },
+            timer: {
+                start: num('timerStart', 75),
+                perKm: num('timerPerKm', 10),
+                step: num('timerStep', 15),
+                stepMinutes: num('timerStepMin', 5)
+            }
+        }
+    };
+    try {
+        await db.collection('settings').doc('app_config').set(cfg, { merge: true });
+        pricingCfg = cfg.pricing;
+        ARAalert('تم حفظ إعدادات التسعير بنجاح', 'success');
+        updateRideTypeUI();
+        if (pickupCoords && dropoffCoords) updateDistanceInfo();
+    } catch (e) {
+        ARAalert('خطأ: ' + e.message, 'error');
+    }
+};
 
 // ============================================
 // MAP INIT
@@ -791,12 +893,13 @@ function updateRideTypeUI() {
     const fareInput = document.getElementById('fareInput');
     const distanceInfo = document.getElementById('distanceInfo');
     if (type === 'open') {
-        if (hint) hint.textContent = 'تُحسب بالوقت لحظياً: 4 أوقية/دقيقة، حد أدنى 100. تُقدَّر لأول 15 دقيقة.';
-        if (fareInput) { fareInput.value = calculateOpenFare(15); }
+        if (hint) hint.textContent = `تُحسب بالمؤقت: بدء ${pricingCfg.timer.start} + ${pricingCfg.timer.perKm}/كم + ${pricingCfg.timer.step}/كل ${pricingCfg.timer.stepMinutes} دقائق. تُقدَّر لأول 15 دقيقة.`;
+        const openKm = pickupCoords && dropoffCoords ? haversine(pickupCoords.lat, pickupCoords.lng, dropoffCoords.lat, dropoffCoords.lng) : 0;
+        if (fareInput) { fareInput.value = calculateOpenFare(15, openKm); }
         if (distanceInfo) distanceInfo.style.display = 'none';
     } else {
-        if (hint) hint.textContent = 'تُحسب من المسافة: 50 انطلاق + 20/كم، حد أدنى 100';
-        if (fareInput) { fareInput.value = pickupCoords && dropoffCoords ? calculateFare(haversine(pickupCoords.lat, pickupCoords.lng, dropoffCoords.lat, dropoffCoords.lng)) : 100; }
+        if (hint) hint.textContent = `تُحسب من المسافة بالشرائح: ${pricingCfg.car.prices[0]} حتى ${pricingCfg.car.maxKm[0]}كم، وتنتهي بـ ${pricingCfg.car.prices[pricingCfg.car.prices.length - 1]} عند ${pricingCfg.car.maxKm[pricingCfg.car.maxKm.length - 1]}كم`;
+        if (fareInput) { fareInput.value = pickupCoords && dropoffCoords ? calculateFare(haversine(pickupCoords.lat, pickupCoords.lng, dropoffCoords.lat, dropoffCoords.lng)) : pricingCfg.car.prices[0]; }
         if (pickupCoords && dropoffCoords) updateDistanceInfo();
         else if (distanceInfo) distanceInfo.style.display = 'none';
     }
@@ -990,7 +1093,7 @@ function navigateToPage(page) {
     if (page === 'deliveries') initDeliveriesListener();
     if (page === 'unregistered-customers') loadUnregisteredCustomers();
     if (page === 'rides') loadRidesList();
-    if (page === 'settings') { loadCommission(); loadRidesCleanupSettings(); }
+    if (page === 'settings') { loadCommission(); loadRidesCleanupSettings(); loadPricingConfig(); }
     if (page === 'admins') loadAdminsList();
     if (page === 'messages') { loadMsgRecipients(); loadSentMessages(); loadSentCustomerMessages(); }
     if (page === 'announcements') loadAnnouncements();
@@ -1099,7 +1202,7 @@ function resetDispatchForm() {
         '<span class="text-muted fw-bold">نقطة الوجهة (انقر مرة ثانية على الخريطة)</span>';
     document.getElementById('searchRadius').value = 3;
     document.getElementById('radiusValue').textContent = '3 كم';
-    document.getElementById('fareInput').value = BASE_FARE;
+    document.getElementById('fareInput').value = pricingCfg.car.prices[0];
     document.getElementById('distanceInfo').style.display = 'none';
     document.getElementById('dispatchBtn').disabled = true;
     document.getElementById('dispatchStatus').textContent = '';
@@ -1117,7 +1220,7 @@ document.getElementById('dispatchBtn').addEventListener('click', async () => {
     const dropoffAddress = document.getElementById('dropoffAddress').value.trim();
     const radius = parseInt(document.getElementById('searchRadius').value);
     const rideType = document.querySelector('input[name="rideType"]:checked')?.value || 'fixed';
-    const fare = parseNum(document.getElementById('fareInput').value) || MIN_FARE;
+    const fare = parseNum(document.getElementById('fareInput').value) || pricingCfg.car.prices[0];
 
     if (!passengerName || !passengerPhone) {
         showStatus('dispatchStatus', 'يرجى إدخال اسم الزبون ورقم هاتفه', 'error');
@@ -1155,7 +1258,7 @@ document.getElementById('dispatchBtn').addEventListener('click', async () => {
             realDistanceKm: Math.round(realDistance * 100) / 100,
             searchRadiusKm: radius,
             rideType,
-            openPerMin: OPEN_PER_MIN,
+            openPerMin: pricingCfg.timer.perKm,
             fare,
             commissionPercent,
             status: 'pending',
@@ -1180,7 +1283,7 @@ document.getElementById('dispatchBtn').addEventListener('click', async () => {
             });
 
             if (tokens.length > 0) {
-                sendFCMNotifications(tokens, docRef.id, passengerName, fare, pickupCoords.lat, pickupCoords.lng, pickupAddress, dropoffAddress, radius, { rideType, openPerMin: OPEN_PER_MIN });
+                sendFCMNotifications(tokens, docRef.id, passengerName, fare, pickupCoords.lat, pickupCoords.lng, pickupAddress, dropoffAddress, radius, { rideType, openPerMin: pricingCfg.timer.perKm });
             }
 
             showStatus('dispatchStatus', `تم الإرسال! ${nearby.length} سائق تم تنبيههم | ${realDistance.toFixed(1)} كم | ${fare} MRU`, 'success');
@@ -3667,7 +3770,7 @@ window.dispatchDeliveryToDrivers = async function (id) {
         realDistanceKm: Math.round(realDist * 100) / 100,
         searchRadiusKm: radius,
         rideType: d.rideType || 'fixed',
-        openPerMin: OPEN_PER_MIN,
+        openPerMin: pricingCfg.timer.perKm,
         fare: price,
         commissionPercent,
         deliveryPhase: 'at_sender',
@@ -3744,7 +3847,7 @@ window.dispatchDeliveryToDrivers = async function (id) {
                     deliveryId: id,
                     deliveryPhase: 'at_sender',
                     rideType: d.rideType || 'fixed',
-                    openPerMin: OPEN_PER_MIN
+                    openPerMin: pricingCfg.timer.perKm
                 }, dropLat, dropLng);
             }
             await db.collection('delivery_requests').doc(id).update({ status: 'launched', rideId });
@@ -5322,6 +5425,7 @@ function initDashboard() {
         syncNouakchottPlaces();
         loadCommission();
         loadCustomerCommission();
+        loadPricingConfig();
         loadRidesCleanupSettings();
         loadStats();
         initRealtimeListeners();
