@@ -393,16 +393,16 @@ let currentPage = 'map';
 
 // ============================================
 // PRICING CONFIG  (قابل للضبط من صفحة الإعدادات — مطابق لخوارزمية التطبيق)
-// الأسعار الافتراضية مخصومة ~5% لتنافس ClassRide ومقرّبة لأقرب 5 أوقية.
+// الأسعار الافتراضية مخصومة ~3% لتنافس ClassRide ومقرّبة لأقرب 5 أوقية.
 // التخزين: settings/app_config → pricing  (تُحمَّل في loadPricingConfig)
-// سيارة: 1كم=65، 3كم=95، 5كم=125، 8كم=160، 12كم=220، 20كم=305، 30كم=425، +19/كم
-// توصيل: 1كم=85، 3كم=105، 5كم=125، 8كم=150، 12كم=190، 20كم=240، سقف 250
+// سيارة: 1كم=70، 3كم=95، 5كم=125، 8كم=165، 12كم=225، 20كم=310، 30كم=435، +19/كم
+// توصيل: 1كم=85، 3كم=105، 5كم=125، 8كم=155، 12كم=195، 20كم=245، سقف 250
 // الليل (00:00–05:00): سيارة ×1.5، توصيل ×1.3
 // المؤقت (مفتوح): بدء 75 + 10/كم + 15 لكل 5 دقائق
 // ============================================
 let pricingCfg = {
-    car: { maxKm: [1, 3, 5, 8, 12, 20, 30], prices: [65, 95, 125, 160, 220, 305, 425], perExtraKm: 19 },
-    delivery: { maxKm: [1, 3, 5, 8, 12, 20], prices: [85, 105, 125, 150, 190, 240], perExtraKm: 20, max: 250 },
+    car: { maxKm: [1, 3, 5, 8, 12, 20, 30], prices: [70, 95, 125, 165, 225, 310, 435], perExtraKm: 19 },
+    delivery: { maxKm: [1, 3, 5, 8, 12, 20], prices: [85, 105, 125, 155, 195, 245], perExtraKm: 20, max: 250 },
     night: { startHour: 0, endHour: 5, carMultiplier: 1.5, deliveryMultiplier: 1.3 },
     timer: { start: 75, perKm: 10, step: 15, stepMinutes: 5 }
 };
@@ -488,9 +488,9 @@ window.savePricingConfig = async function () {
     if (!requireDb()) return;
     const num = (id, d) => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? d : v; };
     const carMax = [1, 3, 5, 8, 12, 20, 30];
-    const carPr = [65, 95, 125, 160, 220, 305, 425];
+    const carPr = [70, 95, 125, 165, 225, 310, 435];
     const delMax = [1, 3, 5, 8, 12, 20];
-    const delPr = [85, 105, 125, 150, 190, 240];
+    const delPr = [85, 105, 125, 155, 195, 245];
     const cfg = {
         pricing: {
             car: {
