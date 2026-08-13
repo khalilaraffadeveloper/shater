@@ -464,7 +464,7 @@ function fillPricingSettingsForm() {
 
 window.savePricingConfig = async function () {
     if (!requireDb()) return;
-    const num = (id, d) => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? d : v; };
+    const num = (id, d) => { const v = parseNum(document.getElementById(id).value); return isNaN(v) ? d : v; };
     const carMax = [1, 3, 5, 8, 12, 20, 30];
     const carPr = [70, 95, 125, 165, 225, 310, 435];
     const delMax = [1, 3, 5, 8, 12, 20];
@@ -5212,7 +5212,7 @@ function fmtDevDate(t) {
     if (d && typeof d.toDate === 'function') d = d.toDate();
     else if (typeof t === 'string') d = new Date(t);
     if (!(d instanceof Date) || isNaN(d.getTime())) return '—';
-    return d.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' });
+    return d.toLocaleDateString('ar-MA', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 async function loadDevices() {
