@@ -400,12 +400,15 @@ let currentPage = 'map';
 // الليل (00:00–05:00): سيارة ×1.5، توصيل ×1.3
 // المؤقت (مفتوح): بدء 75 + 10/كم + 15 لكل 5 دقائق
 // ============================================
-let pricingCfg = {
-    car: { maxKm: [1, 3, 5, 8, 12, 20, 30], prices: [70, 95, 125, 165, 225, 310, 435], perExtraKm: 19 },
-    delivery: { maxKm: [1, 3, 5, 8, 12, 20], prices: [85, 105, 125, 155, 195, 245], perExtraKm: 20, max: 250 },
-    night: { startHour: 0, endHour: 5, carMultiplier: 1.5, deliveryMultiplier: 1.3 },
-    timer: { start: 75, perKm: 10, step: 15, stepMinutes: 5 }
-};
+function defaultPricing() {
+    return {
+        car: { maxKm: [1, 3, 5, 8, 12, 20, 30], prices: [70, 95, 125, 165, 225, 310, 435], perExtraKm: 19 },
+        delivery: { maxKm: [1, 3, 5, 8, 12, 20], prices: [85, 105, 125, 155, 195, 245], perExtraKm: 20, max: 250 },
+        night: { startHour: 0, endHour: 5, carMultiplier: 1.5, deliveryMultiplier: 1.3 },
+        timer: { start: 75, perKm: 10, step: 15, stepMinutes: 5 }
+    };
+}
+let pricingCfg = defaultPricing();
 
 function deepMerge(base, over) {
     if (typeof over !== 'object' || over === null) return over === undefined ? base : over;
@@ -524,6 +527,25 @@ window.savePricingConfig = async function () {
         ARAalert('تم حفظ إعدادات التسعير بنجاح', 'success');
         updateRideTypeUI();
         if (pickupCoords && dropoffCoords) updateDistanceInfo();
+    } catch (e) {
+        ARAalert('خطأ: ' + e.message, 'error');
+    }
+};
+
+// استعادة الأسعار الافتراضية (الخصم ~3%) — كل شيء من اللوحة، لا مستندات ولا ملفات
+window.resetPricingConfig = async function () {
+    if (!requireDb()) return;
+    if (!(await ARAconfirm('استعادة الأسعار الافتراضية (الخصم ~3%)؟ سيُحذف تخصيصك الحالي.'))) return;
+    try {
+        await db.collection('settings').doc('app_config').set(
+            { pricing: firebase.firestore.FieldValue.delete() },
+            { merge: true }
+        );
+        pricingCfg = defaultPricing();
+        fillPricingSettingsForm();
+        updateRideTypeUI();
+        if (pickupCoords && dropoffCoords) updateDistanceInfo();
+        ARAalert('تمت استعادة الأسعار الافتراضية بنجاح', 'success');
     } catch (e) {
         ARAalert('خطأ: ' + e.message, 'error');
     }
