@@ -2568,21 +2568,63 @@ window.approveDriverRegistration = async function (driverId) {
         const docSnap = await docRef.get();
         if (!docSnap.exists) { ARAalert('السائق غير موجود', 'error'); return; }
         const data = docSnap.data() || {};
-        if (!(await ARAconfirm(`سيتم قبول طلب تسجيل السائق «${data.name || '—'}» وفتح حساب له. تأكيد؟`))) return;
+        if (!(await ARAconfirm(`سيتم قبول طلب تسجيل السائق «${data.name || '—'}» وتفعيل حسابه واشتراكه الشهري معاً (خطوة واحدة). تأكيد؟`))) return;
+
+        // Step 1: approve the registration (identity/documents).
         await docRef.update({
             pendingRegistration: false,
             registrationApproved: true,
             registrationApprovedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
+
+        // Step 2 folded into the SAME step: the driver already submitted the
+        // subscription payment proof with the registration (single batch), so
+        // activate the subscription and approve the linked recharge request —
+        // no second approval, no double payment.
+        let subApproved = false;
+        let expiresLabel = '';
+        const reqSnap = await db.collection('recharge_requests')
+            .where('userId', '==', driverId)
+            .where('type', '==', 'subscription')
+            .where('status', '==', 'pending')
+            .limit(1)
+            .get();
+        if (!reqSnap.empty) {
+            const req = reqSnap.docs[0];
+            const rd = req.data() || {};
+            const amount = rd.amount || (data.subscription && data.subscription.amount) || 0;
+            const expires = new Date();
+            expires.setMonth(expires.getMonth() + 1);
+            expiresLabel = expires.toLocaleDateString('ar-MA');
+            await docRef.update({
+                'subscription.active': true,
+                'subscription.type': 'monthly',
+                'subscription.period': 'month',
+                'subscription.amount': amount,
+                'subscription.activatedAt': firebase.firestore.FieldValue.serverTimestamp(),
+                'subscription.lastPaidAt': firebase.firestore.FieldValue.serverTimestamp(),
+                'subscription.expiresAt': expires,
+                status: 'active'
+            });
+            await db.collection('recharge_requests').doc(req.id).update({
+                status: 'approved',
+                processedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                processedBy: (firebase.auth().currentUser && firebase.auth().currentUser.email) || 'admin'
+            });
+            subApproved = true;
+        }
+
         const phone = data.phone || '';
         const password = data.password || '';
         await notifyUser('drivers', driverId, {
             type: 'registration_approved',
             title: 'تم قبول تسجيلك — أهلاً بك في شاطر',
-            body: `تمت الموافقة على طلب تسجيلك. بيانات الدخول الخاصة بك: رقم الهاتف: ${phone} — كلمة المرور: ${password}. يمكنك الآن تسجيل الدخول وتفعيل اشتراكك.`,
+            body: subApproved
+                ? `تم اعتماد تسجيلك وتفعيل اشتراكك الشهري حتى ${expiresLabel}. بيانات الدخول الخاصة بك: رقم الهاتف: ${phone} — كلمة المرور: ${password}. يمكنك الآن تسجيل الدخول والبدء فوراً.`
+                : `تمت الموافقة على طلب تسجيلك. بيانات الدخول الخاصة بك: رقم الهاتف: ${phone} — كلمة المرور: ${password}. يمكنك الآن تسجيل الدخول وتفعيل اشتراكك.`,
             sound: 'approval'
         });
-        ARAalert('تم قبول السائق وإشعاره', 'success');
+        ARAalert(subApproved ? 'تم قبول السائق وتفعيل اشتراكه الشهري' : 'تم قبول السائق وإشعاره', 'success');
         loadDriverRegistrations();
         loadDriversList();
         if ((data.role || '') === 'delivery') loadDeliveryDrivers();
