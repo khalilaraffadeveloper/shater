@@ -884,12 +884,31 @@ function updateRadiusCircle() {
     }).addTo(map);
 }
 
-function updateDistanceInfo() {
+// المسافة الفعلية للطريق من OSRM المجاني بدل الخط المستقيم (السيارات لا تطير).
+// تعيد null عند أي خطأ (لا إنترنت/تعطل) فيتراجع المتصل للخط المستقيم.
+async function fetchRoadKm(a, b) {
+    try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 6000);
+        const url = `https://router.project-osrm.org/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=false&alternatives=false&steps=false`;
+        const res = await fetch(url, { signal: ctrl.signal });
+        clearTimeout(timer);
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (data.code !== 'Ok' || !data.routes || !data.routes.length) return null;
+        const m = data.routes[0].distance;
+        return (m && m > 0) ? m / 1000 : null;
+    } catch (e) { return null; }
+}
+
+async function updateDistanceInfo() {
     const infoDiv = document.getElementById('distanceInfo');
     if (pickupCoords && dropoffCoords) {
-        const dist = haversine(pickupCoords.lat, pickupCoords.lng, dropoffCoords.lat, dropoffCoords.lng);
-        const fare = calculateFare(dist);
-        document.getElementById('realDistance').textContent = `${dist.toFixed(2)} كم`;
+        const straight = haversine(pickupCoords.lat, pickupCoords.lng, dropoffCoords.lat, dropoffCoords.lng);
+        const roadKm = await fetchRoadKm(pickupCoords, dropoffCoords);
+        const km = roadKm || straight;
+        const fare = calculateFare(km);
+        document.getElementById('realDistance').textContent = `${km.toFixed(2)} كم`;
         document.getElementById('autoFare').textContent = `${fare} MRU`;
         const fareInput = document.getElementById('fareInput');
         if (!fareInput.dataset.manual) fareInput.value = fare;
@@ -909,21 +928,26 @@ function updateRouteLine() {
     }
 }
 
-function updateRideTypeUI() {
+async function updateRideTypeUI() {
     const type = document.querySelector('input[name="rideType"]:checked')?.value || 'fixed';
     const hint = document.getElementById('rideTypeHint');
     const fareInput = document.getElementById('fareInput');
     const distanceInfo = document.getElementById('distanceInfo');
+    const straightKm = pickupCoords && dropoffCoords ? haversine(pickupCoords.lat, pickupCoords.lng, dropoffCoords.lat, dropoffCoords.lng) : 0;
+    const roadKm = straightKm ? (await fetchRoadKm(pickupCoords, dropoffCoords)) || straightKm : 0;
     if (type === 'open') {
         if (hint) hint.textContent = `تُحسب بالمؤقت: بدء ${pricingCfg.timer.start} + ${pricingCfg.timer.perKm}/كم + ${pricingCfg.timer.step}/كل ${pricingCfg.timer.stepMinutes} دقائق. تُقدَّر لأول 15 دقيقة.`;
-        const openKm = pickupCoords && dropoffCoords ? haversine(pickupCoords.lat, pickupCoords.lng, dropoffCoords.lat, dropoffCoords.lng) : 0;
-        if (fareInput) { fareInput.value = calculateOpenFare(15, openKm); }
+        if (fareInput) { fareInput.value = calculateOpenFare(15, roadKm); }
         if (distanceInfo) distanceInfo.style.display = 'none';
     } else {
-        if (hint) hint.textContent = `تُحسب من المسافة بالشرائح: ${pricingCfg.car.prices[0]} حتى ${pricingCfg.car.maxKm[0]}كم، وتنتهي بـ ${pricingCfg.car.prices[pricingCfg.car.prices.length - 1]} عند ${pricingCfg.car.maxKm[pricingCfg.car.maxKm.length - 1]}كم`;
-        if (fareInput) { fareInput.value = pickupCoords && dropoffCoords ? calculateFare(haversine(pickupCoords.lat, pickupCoords.lng, dropoffCoords.lat, dropoffCoords.lng)) : pricingCfg.car.prices[0]; }
-        if (pickupCoords && dropoffCoords) updateDistanceInfo();
-        else if (distanceInfo) distanceInfo.style.display = 'none';
+        if (hint) hint.textContent = `تُحسب من مسافة الطريق الفعلية بالشرائح: ${pricingCfg.car.prices[0]} حتى ${pricingCfg.car.maxKm[0]}كم، وتنتهي بـ ${pricingCfg.car.prices[pricingCfg.car.prices.length - 1]} عند ${pricingCfg.car.maxKm[pricingCfg.car.maxKm.length - 1]}كم`;
+        if (pickupCoords && dropoffCoords) {
+            if (fareInput) fareInput.value = calculateFare(roadKm);
+            updateDistanceInfo();
+        } else {
+            if (fareInput) fareInput.value = pricingCfg.car.prices[0];
+            if (distanceInfo) distanceInfo.style.display = 'none';
+        }
     }
 }
 
@@ -1265,7 +1289,7 @@ document.getElementById('dispatchBtn').addEventListener('click', async () => {
     btn.disabled = true;
     btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>جاري الإرسال...';
 
-    const realDistance = haversine(pickupCoords.lat, pickupCoords.lng, dropoffCoords.lat, dropoffCoords.lng);
+    const realDistance = (await fetchRoadKm(pickupCoords, dropoffCoords)) || haversine(pickupCoords.lat, pickupCoords.lng, dropoffCoords.lat, dropoffCoords.lng);
 
     try {
         const rideData = {
