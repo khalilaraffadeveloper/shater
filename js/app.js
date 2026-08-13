@@ -6299,6 +6299,11 @@ async function adminFindMatchingDrivers(lat, lng, type, radiusKm, limit) {
             if (d.registrationApproved !== true) return;
             const sub = d.subscription;
             if (!sub || typeof sub !== 'object' || sub.active !== true) return;
+            // الاشتراك المنتهي لا يُطابق: فحص expiresAt تماماً كما في التطبيق.
+            if (sub.expiresAt) {
+                const exp = sub.expiresAt.toDate ? sub.expiresAt.toDate() : new Date(sub.expiresAt);
+                if (exp <= new Date()) return;
+            }
             const current = d.currentRideId;
             if (typeof current === 'string' && current) return;
             const vehicle = d.vehicleType || 'car';
