@@ -550,6 +550,26 @@ function initMap() {
     }, null, { position: 'topright' }).addTo(map);
 
     L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
+
+    // نقرة أولى = الانطلاق، نقرة ثانية = الوجهة (عند فتح لوحة الإطلاق فقط)
+    map.on('click', (e) => {
+        if (!dispatchPanelOpen) return;
+        const { lat, lng } = e.latlng;
+        if (mapClickMode === 'pickup') {
+            setPickupPoint(lat, lng);
+            mapClickMode = 'dropoff';
+            document.getElementById('pickupCoords').placeholder = '✓ تم تحديد الانطلاق';
+            document.getElementById('dropoffCoords').placeholder = 'النقرة الثانية = الوجهة';
+            document.getElementById('dPickupLabel').innerHTML = '<span class="text-success fw-bold">✓ نقطة الانطلاق</span>';
+            document.getElementById('dDropoffLabel').innerHTML = '<span class="text-danger fw-bold">نقطة الوجهة (انقر على الخريطة)</span>';
+        } else {
+            setDropoffPoint(lat, lng);
+            mapClickMode = 'pickup';
+            document.getElementById('dDropoffLabel').innerHTML = '<span class="text-success fw-bold">✓ نقطة الوجهة</span>';
+            document.getElementById('dPickupLabel').innerHTML = '<span class="text-muted">نقطة الانطلاق (النقرة الأولى على الخريطة)</span>';
+        }
+        updateDispatchBtn();
+    });
 }
 
 /* Local Nouakchott places dataset (from OpenStreetMap/Overpass, ~3500 places).
@@ -4555,6 +4575,7 @@ function initDashboard() {
     // The map tiles get priority: the heavy Firestore listeners and stats are
     // started a moment later so the live map appears quickly on slow links.
     initMap();
+    bindMapSearch();
     loadNouakchottPlaces();
     applyRoleVisibility();
     // Ensure the map re-measures after the layout settles so it always fills
@@ -6172,51 +6193,297 @@ async function bkAutoPickup() {
     } catch (e) {}
 }
 
-let bookingMap = null;
-let bookingMapMarker = null;
-let bookingMapTemp = null;
-let bookingMapMode = null;
+// ============================================
+// DISPATCH PANEL (إطلاق رحلة من اللوحة — البحث بالخريطة)
+// ============================================
+let dispatchPanelOpen = false;
+let pickupMarker = null;
+let dropoffMarker = null;
+let routeLine = null;
+let pickupCoords = null;
+let dropoffCoords = null;
+let mapClickMode = 'pickup'; // 'pickup' or 'dropoff'
 
-window.setBookingPickMode = function (mode) {
-    const modalEl = document.getElementById('bookingMapModal');
-    const pickerEl = document.getElementById('bookingMapPicker');
-    if (!modalEl || !pickerEl) return;
-    bookingMapMode = mode;
-    bookingMapTemp = null;
-    const title = document.getElementById('bookingMapTitle');
-    if (title) title.textContent = mode === 'pickup' ? 'تحديد نقطة الانطلاق' : 'تحديد الوجهة';
-    const coords = document.getElementById('bookingMapCoordsText');
-    if (coords) coords.textContent = 'لم يُحدد بعد';
-    bootstrap.Modal.getOrCreateInstance(modalEl).show();
-    setTimeout(() => {
-        if (bookingMap) { bookingMap.invalidateSize(); return; }
-        bookingMap = L.map('bookingMapPicker', { zoomControl: true }).setView([18.0735, -15.9582], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap', maxZoom: 19
-        }).addTo(bookingMap);
-        bookingMap.on('click', function (e) {
-            bookingMapTemp = { lat: e.latlng.lat, lng: e.latlng.lng };
-            if (bookingMapMarker) bookingMapMarker.setLatLng(e.latlng);
-            else bookingMapMarker = L.marker(e.latlng).addTo(bookingMap);
-            const coordsEl = document.getElementById('bookingMapCoordsText');
-            if (coordsEl) coordsEl.textContent = 'تم التحديد: ' + e.latlng.lat.toFixed(5) + ', ' + e.latlng.lng.toFixed(5);
-        });
-    }, 150);
+window.toggleDispatchPanel = function () {
+    dispatchPanelOpen = !dispatchPanelOpen;
+    document.getElementById('dispatchPanel').classList.toggle('open', dispatchPanelOpen);
+    document.getElementById('dispatchOverlay').classList.toggle('show', dispatchPanelOpen);
+    document.getElementById('dispatchOverlay').classList.toggle('d-none', !dispatchPanelOpen);
+    if (dispatchPanelOpen) {
+        setTimeout(() => {
+            const f = document.getElementById('dName');
+            if (f) f.focus();
+        }, 350);
+    }
 };
 
-document.getElementById('confirmBookingLocationBtn')?.addEventListener('click', function () {
-    if (!bookingMapTemp) { ARAalert('انقر على الخريطة لتحديد الموقع أولاً', 'warning'); return; }
-    if (bookingMapMode === 'pickup') {
-        bkPickup = bookingMapTemp;
-        bkFillAddress('pickup', bookingMapTemp);
-    } else {
-        bkDropoff = bookingMapTemp;
-        bkFillAddress('dropoff', bookingMapTemp);
+function closeDispatchPanel() {
+    dispatchPanelOpen = false;
+    document.getElementById('dispatchPanel').classList.remove('open');
+    document.getElementById('dispatchOverlay').classList.remove('show');
+    setTimeout(() => document.getElementById('dispatchOverlay').classList.add('d-none'), 300);
+}
+
+function setPickupPoint(lat, lng) {
+    pickupCoords = { lat, lng };
+    if (pickupMarker) map.removeLayer(pickupMarker);
+    const icon = L.divIcon({
+        className: 'pickup-marker-wrapper',
+        html: '<div style="background:#2E7D32;border:3px solid white;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,0.35);color:white;font-size:15px;font-weight:bold;">A</div>',
+        iconSize: [34, 34], iconAnchor: [17, 17]
+    });
+    pickupMarker = L.marker([lat, lng], { icon }).addTo(map);
+    document.getElementById('pickupCoords').value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    reverseGeocode(lat, lng).then(addr => {
+        if (addr) document.getElementById('pickupAddress').value = addr;
+    });
+    drawDispatchRoute();
+    updateDispatchInfo();
+}
+
+function setDropoffPoint(lat, lng) {
+    dropoffCoords = { lat, lng };
+    if (dropoffMarker) map.removeLayer(dropoffMarker);
+    const icon = L.divIcon({
+        className: 'dropoff-marker-wrapper',
+        html: '<div style="background:#C62828;border:3px solid white;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,0.35);color:white;font-size:15px;font-weight:bold;">B</div>',
+        iconSize: [34, 34], iconAnchor: [17, 17]
+    });
+    dropoffMarker = L.marker([lat, lng], { icon }).addTo(map);
+    document.getElementById('dropoffCoords').value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    reverseGeocode(lat, lng).then(addr => {
+        if (addr) document.getElementById('dropoffAddress').value = addr;
+    });
+    drawDispatchRoute();
+    updateDispatchInfo();
+}
+
+function drawDispatchRoute() {
+    if (routeLine) map.removeLayer(routeLine);
+    routeLine = null;
+    if (pickupCoords && dropoffCoords) {
+        routeLine = L.polyline([[pickupCoords.lat, pickupCoords.lng], [dropoffCoords.lat, dropoffCoords.lng]], {
+            color: '#0B1849', weight: 3, dashArray: '8, 6'
+        }).addTo(map);
     }
-    bootstrap.Modal.getInstance(document.getElementById('bookingMapModal'))?.hide();
-    bookingMapTemp = null;
-    updateBookingFare();
+}
+
+function updateDispatchInfo() {
+    const isOpen = document.querySelector('input[name="dRideType"]:checked')?.value === 'open';
+    const info = document.getElementById('dispatchInfo');
+    const vehicle = document.getElementById('dVehicle').value;
+    if (isOpen || !pickupCoords || !dropoffCoords) {
+        if (info) info.classList.add('d-none');
+    } else {
+        const dist = haversine(pickupCoords.lat, pickupCoords.lng, dropoffCoords.lat, dropoffCoords.lng);
+        document.getElementById('dDistance').textContent = `${dist.toFixed(2)} كم`;
+        document.getElementById('dFare').textContent = `${bkPriceFor(vehicle, dist)} MRU`;
+        if (info) info.classList.remove('d-none');
+    }
+    updateDispatchBtn();
+}
+
+function updateDispatchBtn() {
+    const btn = document.getElementById('dispatchBtn');
+    if (!btn) return;
+    const name = document.getElementById('dName').value.trim();
+    const phone = document.getElementById('dPhone').value.trim();
+    const isOpen = document.querySelector('input[name="dRideType"]:checked')?.value === 'open';
+    btn.disabled = !(name && phone && pickupCoords && (isOpen || dropoffCoords));
+}
+
+function resetDispatchForm() {
+    if (pickupMarker) map.removeLayer(pickupMarker);
+    if (dropoffMarker) map.removeLayer(dropoffMarker);
+    if (routeLine) map.removeLayer(routeLine);
+    pickupMarker = null; dropoffMarker = null; routeLine = null;
+    pickupCoords = null; dropoffCoords = null;
+    mapClickMode = 'pickup';
+    ['dName', 'dPhone', 'pickupCoords', 'dropoffCoords', 'pickupAddress', 'dropoffAddress'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    document.getElementById('pickupCoords').placeholder = 'النقرة الأولى = الانطلاق';
+    document.getElementById('dropoffCoords').placeholder = 'النقرة الثانية = الوجهة';
+    document.getElementById('dPickupLabel').innerHTML = '<span class="text-muted">نقطة الانطلاق (النقرة الأولى على الخريطة)</span>';
+    document.getElementById('dDropoffLabel').innerHTML = '<span class="text-muted">نقطة الوجهة (النقرة الثانية على الخريطة)</span>';
+    document.getElementById('dispatchInfo').classList.add('d-none');
+    document.getElementById('dispatchStatus').textContent = '';
+    updateDispatchBtn();
+}
+
+document.getElementById('clearPickup')?.addEventListener('click', resetDispatchForm);
+document.getElementById('clearDropoff')?.addEventListener('click', () => {
+    if (dropoffMarker) map.removeLayer(dropoffMarker);
+    dropoffMarker = null; dropoffCoords = null;
+    document.getElementById('dropoffCoords').value = '';
+    document.getElementById('dropoffCoords').placeholder = 'النقرة الثانية = الوجهة';
+    document.getElementById('dDropoffLabel').innerHTML = '<span class="text-danger fw-bold">نقطة الوجهة (انقر على الخريطة)</span>';
+    mapClickMode = 'dropoff';
+    drawDispatchRoute();
+    updateDispatchInfo();
 });
+
+['dName', 'dPhone', 'pickupAddress', 'dropoffAddress'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', updateDispatchBtn);
+});
+
+const dispatchFocusChain = ['dName', 'dPhone', 'pickupAddress', 'dropoffAddress'];
+dispatchFocusChain.forEach((id, i) => {
+    document.getElementById(id)?.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        const nextId = dispatchFocusChain[i + 1] || 'dispatchBtn';
+        const next = document.getElementById(nextId);
+        if (next) next.focus();
+    });
+});
+
+document.getElementById('dispatchBtn')?.addEventListener('click', () => submitDispatchRide());
+
+// إطلاق الرحلة عبر نظام الرحلات الموحد (نفس صيغة تطبيق الزبون، source: 'admin')
+window.submitDispatchRide = async function () {
+    if (!requireDb('dispatchStatus')) return;
+    const name = document.getElementById('dName').value.trim();
+    const phone = document.getElementById('dPhone').value.trim();
+    const vehicle = document.getElementById('dVehicle').value;
+    const isOpen = document.querySelector('input[name="dRideType"]:checked')?.value === 'open';
+    if (!name || !phone) { showStatus('dispatchStatus', 'أدخل اسم الزبون وهاتفه', 'error'); return; }
+    if (!pickupCoords) { showStatus('dispatchStatus', 'النقرة الأولى على الخريطة = نقطة الانطلاق', 'error'); return; }
+    if (!isOpen && !dropoffCoords) { showStatus('dispatchStatus', 'النقرة الثانية على الخريطة = الوجهة', 'error'); return; }
+
+    const btn = document.getElementById('dispatchBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>جاري إطلاق الطلب...';
+
+    bkPickup = pickupCoords;
+    bkDropoff = dropoffCoords;
+    const km = isOpen ? 0 : ((await bkComputeDistance()) || 0);
+    const open = pricingCfg.open || { start: 75, perHour: 400 };
+    const fare = isOpen ? open.start : bkPriceFor(vehicle, km);
+    const pickupAddress = document.getElementById('pickupAddress').value.trim() ||
+        `موقع على الخريطة (${pickupCoords.lat.toFixed(5)}, ${pickupCoords.lng.toFixed(5)})`;
+    const dropoffAddress = isOpen ? ''
+        : (document.getElementById('dropoffAddress').value.trim() ||
+            `موقع على الخريطة (${dropoffCoords.lat.toFixed(5)}, ${dropoffCoords.lng.toFixed(5)})`);
+
+    try {
+        const rideRef = await db.collection('rides').add({
+            type: vehicle,
+            rideKind: isOpen ? 'open' : 'fixed',
+            status: 'pending',
+            source: 'admin',
+            passengerName: name,
+            passengerPhone: phone,
+            pickupLat: pickupCoords.lat,
+            pickupLng: pickupCoords.lng,
+            pickupAddress,
+            dropoffLat: isOpen ? pickupCoords.lat : dropoffCoords.lat,
+            dropoffLng: isOpen ? pickupCoords.lng : dropoffCoords.lng,
+            dropoffAddress,
+            distanceKm: km,
+            fare,
+            ...(isOpen ? { openStart: open.start, openPerHour: open.perHour } : {}),
+            notes: 'إطلاق من لوحة التحكم (البحث بالخريطة)',
+            night: isNightTime(),
+            searchRound: 1,
+            reassignments: 0,
+            notifiedDrivers: [],
+            rejectedDrivers: [],
+            expiresAt: firebase.firestore.Timestamp.fromMillis(Date.now() + BK_TTL_SECONDS * 1000),
+            requestedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        markSelfTouched(rideRef.id);
+
+        const drivers = await adminFindMatchingDrivers(pickupCoords.lat, pickupCoords.lng, vehicle, 2, 5);
+        if (drivers.length === 0) {
+            await rideRef.update({
+                status: 'expired',
+                cancelReason: 'no_drivers',
+                expiredAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            addNotifLog('dispatch', `إطلاق ${name}: لا سائقين ضمن 3 كم — انتهى`);
+            showStatus('dispatchStatus', 'لا يوجد سائقون متاحون قريباً — أُلغي الطلب تلقائياً', 'error');
+            resetDispatchForm();
+            return;
+        }
+
+        const ids = drivers.map(d => d.id);
+        await bkNotifyDrivers(ids, rideRef.id, {
+            type: vehicle,
+            isOpen,
+            fare,
+            openStart: open.start,
+            openPerHour: open.perHour,
+            km,
+            pickup: pickupCoords,
+            dropoff: isOpen ? pickupCoords : dropoffCoords,
+            pickupAddress,
+            dropoffAddress
+        });
+        await rideRef.update({ notifiedDrivers: ids });
+
+        bkActiveRideId = rideRef.id;
+        bkRounds = { r2: false, r3: false, r4: false };
+        bkPendingStartedAt = Date.now();
+        bkStartSearchTicker(rideRef.id);
+
+        addNotifLog('dispatch',
+            `إطلاق ${name} (${phone}): ${pickupAddress} ← ${isOpen ? 'جولة مفتوحة' : dropoffAddress}` +
+            ` | ${isOpen ? open.start + ' + ' + open.perHour + '/ساعة' : fare + ' MRU'} | ${ids.length} سائق`);
+        resetDispatchForm();
+        showStatus('dispatchStatus', `تم إشعار ${ids.length} سائق. البحث جارٍ...`, 'success');
+        setTimeout(closeDispatchPanel, 1800);
+    } catch (err) {
+        showStatus('dispatchStatus', 'خطأ: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-send-fill me-2"></i>إطلاق الطلب';
+    }
+};
+
+// بحث الخريطة (البحث بالخريطة)
+let searchResultMarker = null;
+
+function bindMapSearch() {
+    const input = document.getElementById('mapSearchInput');
+    const btn = document.getElementById('mapSearchBtn');
+    const resultsBox = document.getElementById('mapSearchResults');
+    if (!input || !btn || !resultsBox) return;
+
+    const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    async function doSearch() {
+        const q = input.value.trim();
+        if (!q) { resultsBox.innerHTML = ''; return; }
+        try {
+            const res = await fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) +
+                '&format=json&limit=6&accept-language=ar');
+            const data = await res.json();
+            if (!data.length) { resultsBox.innerHTML = '<div class="map-search-empty">لا توجد نتائج</div>'; return; }
+            resultsBox.innerHTML = data.map((r, i) =>
+                '<div class="map-search-result" data-i="' + i + '">' + escapeHtml(r.display_name) + '</div>').join('');
+            resultsBox.querySelectorAll('.map-search-result').forEach(el => {
+                el.onclick = () => {
+                    const r = data[parseInt(el.dataset.i)];
+                    map.flyTo([parseFloat(r.lat), parseFloat(r.lon)], 16);
+                    if (searchResultMarker) map.removeLayer(searchResultMarker);
+                    searchResultMarker = L.marker([parseFloat(r.lat), parseFloat(r.lon)]).addTo(map)
+                        .bindPopup(escapeHtml(r.display_name)).openPopup();
+                    resultsBox.innerHTML = '';
+                    input.value = '';
+                };
+            });
+        } catch (e) { console.error('Map search error:', e); }
+    }
+
+    btn.addEventListener('click', doSearch);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.map-search')) resultsBox.innerHTML = '';
+    });
+}
 
 function bkDrawMarker(which, pt) {
     const color = which === 'pickup' ? '#2E7D32' : '#C62828';
