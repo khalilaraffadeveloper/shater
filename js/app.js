@@ -1398,6 +1398,7 @@ function buildDriverRow(d) {
         <td><span class="${badgeClass}">${label}</span></td>
         <td>
             <div class="d-flex gap-1 flex-wrap">
+                ${`<button class="btn-action btn-action-view" onclick="openDriverProfile('${d.id}')">الملف</button>`}
                 ${canEdit ? `<button class="btn-action btn-action-edit" onclick="openEditModal('${d.id}','${safeName}','${d.phone||''}','${d.disabled?"disabled":"active"}')">تعديل</button>` : ''}
                 ${canEdit ? `<button class="btn-action btn-action-toggle" onclick="toggleDriverStatus('${d.id}',${d.disabled||false})">${d.disabled ? 'تفعيل' : 'تعطيل'}</button>` : ''}
                 ${canService && !d.disabled ? `<button class="btn-action ${d.isOnline ? 'btn-action-delete' : 'btn-action-on'}" onclick="toggleDriverService('${d.id}','${safeName}',${!d.isOnline})">${d.isOnline ? 'إيقاف الخدمة' : 'تشغيل الخدمة'}</button>` : ''}
@@ -1949,6 +1950,7 @@ const editModal = new bootstrap.Modal(document.getElementById('editDriverModal')
 const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
 const passwordModal = new bootstrap.Modal(document.getElementById('passwordModal'));
 const serviceConfirmModal = new bootstrap.Modal(document.getElementById('serviceConfirmModal'));
+const driverProfileModal = new bootstrap.Modal(document.getElementById('driverProfileModal'));
 
 // Customer modals
 const editCustomerModal = new bootstrap.Modal(document.getElementById('editCustomerModal'));
@@ -2006,6 +2008,77 @@ document.getElementById('saveEditBtn').addEventListener('click', async () => {
         refreshDriverSearchResult();
     } catch (err) { console.error('Edit error:', err); }
 });
+
+window.openDriverProfile = async function (id) {
+    if (!requireDb()) return;
+    const body = document.getElementById('driverProfileBody');
+    body.innerHTML = '<div class="text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل الملف...</div></div>';
+    driverProfileModal.show();
+    try {
+        const snap = await db.collection('drivers').doc(id).get();
+        if (!snap.exists) {
+            body.innerHTML = '<div class="alert alert-danger py-3">لم يتم العثور على السائق</div>';
+            return;
+        }
+        const d = snap.data();
+        const isDelivery = d.role === 'delivery' || d.vehicleType === 'bike';
+        const name = escapeHtmlStr(d.name || '-');
+        const phone = escapeHtmlStr(d.phone || '-');
+        const carType = escapeHtmlStr(d.carType || '');
+        const vehicleDesc = isDelivery
+            ? '<i class="bi bi-bicycle me-1"></i>دراجة / توصيل'
+            : '<i class="bi bi-car-front me-1"></i>سيارة' + (carType ? ' — ' + carType : '') + (d.hasAC ? ' <span class="badge bg-success ms-1">مكيّفة</span>' : '');
+        const rc = Number(d.ratingsCount || 0);
+        const avg = (d.averageRating != null) ? Number(d.averageRating) : null;
+        const ratingHtml = (avg != null && rc > 0)
+            ? '<span class="fs-5 fw-bold text-warning"><i class="bi bi-star-fill me-1"></i>' + avg.toFixed(1) + '</span> <span class="text-muted small">(' + rc + (rc === 1 ? ' تقييم' : ' تقييمات') + ')</span>'
+            : '<span class="text-muted small">لا توجد تقييمات بعد</span>';
+        const sub = (d.subscription && typeof d.subscription === 'object') ? d.subscription : {};
+        const subActive = sub.active === true;
+        const subExp = sub.expiresAt ? (sub.expiresAt.toDate ? fmtDate(sub.expiresAt.toDate()) : fmtDate(new Date(sub.expiresAt))) : '-';
+        const subType = sub.type === 'monthly' ? 'شهري' : (sub.type === 'yearly' ? 'سنوي' : '—');
+        const subHtml = subActive
+            ? '<span class="badge bg-success">نشط</span><div class="small text-muted mt-1">' + subType + ' — ينتهي: <span dir="ltr">' + subExp + '</span></div>'
+            : '<span class="badge bg-danger">غير نشط</span><div class="small text-muted mt-1">' + subType + '</div>';
+        const statusHtml = d.disabled
+            ? '<span class="badge bg-danger">معطّل</span>'
+            : (d.isOnline ? '<span class="badge bg-success">متاح</span>' : '<span class="badge bg-secondary">غير متاح</span>');
+        const regHtml = d.registrationApproved === true
+            ? '<span class="badge bg-success">موافق عليه</span>'
+            : '<span class="badge bg-warning text-dark">قيد المراجعة</span>';
+        const fmtTs = (v) => v ? (v.toDate ? fmtDate(v.toDate()) : '-') : '-';
+        const joined = fmtTs(d.createdAt);
+        const lastUpd = fmtTs(d.updatedAt);
+        body.innerHTML = `
+            <div class="text-center mb-3">
+                <div class="mx-auto d-flex align-items-center justify-content-center rounded-circle mb-2" style="width:68px;height:68px;background:#0A1633;">
+                    <i class="bi ${isDelivery ? 'bi-bicycle' : 'bi-car-front'} text-warning fs-3"></i>
+                </div>
+                <h5 class="fw-bold mb-1">${name}</h5>
+                <div class="text-muted small mb-1">${isDelivery ? 'سائق توصيل' : 'سائق سيارة'} ${statusHtml}</div>
+                <div class="mt-1">${ratingHtml}</div>
+            </div>
+            <hr>
+            <div class="bg-light rounded-3 p-3 small">
+                <div class="row g-2">
+                    <div class="col-4 fw-bold text-muted">الهاتف</div>
+                    <div class="col-8"><span dir="ltr">${phone}</span></div>
+                    <div class="col-4 fw-bold text-muted">المركبة</div>
+                    <div class="col-8">${vehicleDesc}</div>
+                    <div class="col-4 fw-bold text-muted">حالة الحساب</div>
+                    <div class="col-8">${regHtml}</div>
+                    <div class="col-4 fw-bold text-muted">الاشتراك</div>
+                    <div class="col-8">${subHtml}</div>
+                    <div class="col-4 fw-bold text-muted">تاريخ التسجيل</div>
+                    <div class="col-8"><span dir="ltr">${joined}</span></div>
+                    <div class="col-4 fw-bold text-muted">آخر تحديث</div>
+                    <div class="col-8"><span dir="ltr">${lastUpd}</span></div>
+                </div>
+            </div>`;
+    } catch (e) {
+        body.innerHTML = '<div class="alert alert-danger py-3">خطأ: ' + escapeHtmlStr(e.message) + '</div>';
+    }
+};
 
 window.toggleDriverStatus = async function(id, currentlyDisabled) {
     if (!requireDb()) return;

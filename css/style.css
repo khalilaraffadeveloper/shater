@@ -238,6 +238,8 @@ body.stats-collapsed .map-wrapper { height: calc(100vh - 84px); }
 .btn-action-delete:hover { background: #FFCDD2; }
 .btn-action-on { background: #E8F5E9; color: #2E7D32; border: none; }
 .btn-action-on:hover { background: #C8E6C9; }
+.btn-action-view { background: #E8EAF6; color: #283593; border: none; }
+.btn-action-view:hover { background: #C5CAE9; }
 
 /* ============ BOOTSTRAP OVERRIDES ============ */
 .table-dark-blue { background: var(--k-blue) !important; }
