@@ -69,19 +69,16 @@ app.post('/api/dispatch-ride', async (req, res) => {
         );
         const driverDocs = await Promise.all(tokenPromises);
 
-        // Only notify drivers with credit > 0
-        const eligibleDrivers = driverDocs.filter(doc => {
-            if (!doc.exists) return false;
-            const data = doc.data();
-            const credit = data.credit || 0;
-            return credit > 0 && data.fcmToken;
-        });
+        // Notify all drivers that have a registered FCM token
+        const eligibleDrivers = driverDocs.filter(doc =>
+            doc.exists && doc.data().fcmToken
+        );
 
         const tokens = eligibleDrivers.map(doc => doc.data().fcmToken);
         const eligibleIds = eligibleDrivers.map(doc => doc.id);
 
         if (tokens.length === 0) {
-            return res.status(404).json({ error: 'No eligible drivers nearby (credit > 0)' });
+            return res.status(404).json({ error: 'No eligible drivers nearby (no registered device)' });
         }
 
         const message = {
@@ -193,16 +190,18 @@ app.post('/api/accept-ride', async (req, res) => {
             return res.status(400).json({ error: 'Missing rideId or driverId' });
         }
 
-        // Check driver credit first
+        // Check driver subscription first
         const driverDoc = await db.collection('drivers').doc(driverId).get();
         if (!driverDoc.exists) {
             return res.status(404).json({ error: 'Driver not found' });
         }
 
         const driverData = driverDoc.data();
-        if ((driverData.credit || 0) <= 0) {
+        const sub = driverData.subscription || {};
+        const subValid = sub.active && (!sub.expiresAt || new Date(sub.expiresAt.seconds ? sub.expiresAt.seconds * 1000 : sub.expiresAt) > new Date());
+        if (!subValid) {
             return res.status(403).json({
-                error: 'رصيدك غير كافٍ لاستلام الطلبات، يرجى مراجعة الإدارة لشحن الرصيد'
+                error: 'اشتراكك غير نشط، يرجى تجديد اشتراكك لاستلام الطلبات'
             });
         }
 
@@ -220,7 +219,7 @@ app.post('/api/accept-ride', async (req, res) => {
                 throw new Error('RIDE_ALREADY_ACCEPTED');
             }
 
-            // Atomic: accept ride + assign driver + deduct credit
+            // Atomic: accept ride + assign driver
             transaction.update(rideRef, {
                 status: 'accepted',
                 assignedDriverId: driverId,
@@ -228,8 +227,7 @@ app.post('/api/accept-ride', async (req, res) => {
             });
 
             transaction.update(db.collection('drivers').doc(driverId), {
-                currentRideId: rideId,
-                credit: admin.firestore.FieldValue.increment(-1)
+                currentRideId: rideId
             });
 
             return {
@@ -288,8 +286,7 @@ app.get('/api/nearby-drivers', async (req, res) => {
                         id: doc.id,
                         distance: distance.toFixed(2),
                         name: data.name,
-                        vehicleType: data.vehicleType,
-                        credit: data.credit || 0
+                        vehicleType: data.vehicleType
                     });
                 }
             }
@@ -303,30 +300,10 @@ app.get('/api/nearby-drivers', async (req, res) => {
     }
 });
 
-// API: Update driver credit (admin only)
-app.post('/api/update-credit', async (req, res) => {
-    try {
-        const { driverId, amount } = req.body;
-
-        if (!driverId || typeof amount !== 'number' || amount <= 0) {
-            return res.status(400).json({ error: 'Missing driverId or invalid amount' });
-        }
-
-        await db.collection('drivers').doc(driverId).update({
-            credit: admin.firestore.FieldValue.increment(amount)
-        });
-
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Update credit error:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
 // API: Register new driver
 app.post('/api/register-driver', async (req, res) => {
     try {
-        const { name, phone, password, vehicleType, credit } = req.body;
+        const { name, phone, password, vehicleType } = req.body;
 
         if (!name || !phone || !password) {
             return res.status(400).json({ error: 'Name, phone and password are required' });
@@ -343,7 +320,6 @@ app.post('/api/register-driver', async (req, res) => {
             phone,
             password,
             vehicleType: vehicleType || 'car',
-            credit: credit || 0,
             lat: 18.0735,
             lng: -15.9582,
             geohash: '',
@@ -422,7 +398,7 @@ app.get('/api/customers', async (req, res) => {
 // API: Register new customer
 app.post('/api/register-customer', async (req, res) => {
     try {
-        const { name, phone, whatsapp, password, credit } = req.body;
+        const { name, phone, whatsapp, password } = req.body;
 
         if (!name || !phone || !password) {
             return res.status(400).json({ error: 'Name, phone and password are required' });
@@ -433,7 +409,6 @@ app.post('/api/register-customer', async (req, res) => {
             phone,
             whatsapp: whatsapp || '',
             password,
-            credit: credit || 0,
             lat: 18.0735,
             lng: -15.9582,
             geohash: '',
@@ -480,46 +455,6 @@ app.delete('/api/delete-customer/:id', async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         console.error('Delete customer error:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-// API: Update customer credit (add)
-app.post('/api/update-customer-credit', async (req, res) => {
-    try {
-        const { customerId, amount } = req.body;
-
-        if (!customerId || typeof amount !== 'number' || amount <= 0) {
-            return res.status(400).json({ error: 'Missing customerId or invalid amount' });
-        }
-
-        await db.collection('customers').doc(customerId).update({
-            credit: admin.firestore.FieldValue.increment(amount)
-        });
-
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Update customer credit error:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-// API: Set customer credit (overwrite)
-app.post('/api/set-customer-credit', async (req, res) => {
-    try {
-        const { customerId, amount } = req.body;
-
-        if (!customerId || typeof amount !== 'number' || amount < 0) {
-            return res.status(400).json({ error: 'Missing customerId or invalid amount' });
-        }
-
-        await db.collection('customers').doc(customerId).update({
-            credit: amount
-        });
-
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Set customer credit error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

@@ -79,12 +79,10 @@ const PERMISSION_KEYS = {
     drivers_edit: 'تعديل بيانات السائقين',
     drivers_delete: 'حذف سائق',
     drivers_service: 'التحكم بالخدمة عن بُعد',
-    drivers_credit: 'تعديل رصيد السائق',
     customers: 'إدارة الزبائن (عرض)',
     customers_add: 'تسجيل زبون جديد',
     customers_edit: 'تعديل بيانات الزبائن',
     customers_delete: 'حذف زبون',
-    customers_credit: 'تعديل رصيد الزبون',
     recharge_approve: 'الموافقة على طلبات الاشتراك',
     deliveries: 'طلبات التوصيل',
     rides: 'سجل الرحلات',
@@ -119,9 +117,9 @@ const ALL_PERMISSIONS = Object.keys(PERMISSION_KEYS);
 // الصلاحية الفرعية تمنح صفحتها تلقائياً (مثال: customers_add تعطي صفحة الزبائن)
 const PARENT_PAGE = {
     drivers_add: 'drivers', drivers_edit: 'drivers', drivers_delete: 'drivers',
-    drivers_service: 'drivers', drivers_credit: 'drivers',
+    drivers_service: 'drivers',
     customers_add: 'customers', customers_edit: 'customers', customers_delete: 'customers',
-    customers_credit: 'customers', recharge_approve: 'customers'
+    recharge_approve: 'customers'
 };
 
 const PAGE_ORDER = [
@@ -910,20 +908,18 @@ function renderDriverSearchResult(id, d) {
     const safeName = (d.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
     const disabled = !!d.disabled;
     const canEdit = canPerm('drivers_edit');
-    const canCredit = canPerm('drivers_credit');
     const canDel = canPerm('drivers_delete');
     resultEl.innerHTML = `
         <div class="bg-light rounded-3 p-3">
             <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
                 <div>
                     <p class="fw-bold mb-1">${d.name || '-'}</p>
-                    <p class="text-muted small mb-1">الهاتف: <span dir="ltr">${d.phone || '-'}</span> | الرصيد: <strong class="text-gold">${d.credit || 0} MRU</strong></p>
+                    <p class="text-muted small mb-1">الهاتف: <span dir="ltr">${d.phone || '-'}</span></p>
                 </div>
                 <span class="badge ${disabled ? 'bg-danger' : 'bg-success'}">${disabled ? 'معطّل' : 'مفعّل'}</span>
             </div>
             <div class="d-flex gap-1 flex-wrap mt-2">
                 ${canEdit ? `<button class="btn-action btn-action-edit" onclick="openEditModal('${id}','${safeName}','${d.phone||''}','${disabled?"disabled":"active"}')">تعديل</button>` : ''}
-                ${canCredit ? `<button class="btn-action btn-action-edit" style="background:#fff3cd;border-color:#ffc107;color:#856404" onclick="openEditCreditModal('${id}','${safeName}',${d.credit||0})">تعديل الرصيد</button>` : ''}
                 ${canEdit ? `<button class="btn-action btn-action-toggle" onclick="toggleDriverStatus('${id}',${disabled})">${disabled ? 'تفعيل' : 'تعطيل'}</button>` : ''}
                 ${canDel ? `<button class="btn-action btn-action-delete" onclick="openDeleteModal('${id}','${safeName}')">حذف</button>` : ''}
             </div>
@@ -1273,7 +1269,7 @@ function initRealtimeListeners() {
                         iconSize: [36, 36], iconAnchor: [18, 18]
                     });
                     const marker = L.marker([data.lat, data.lng], { icon }).addTo(map)
-                        .bindPopup(`<div style="font-family:Cairo;text-align:center;direction:rtl;"><strong>${data.name || 'سائق'}</strong><br><small>${vehicleLabel} | رصيد: ${data.credit || 0} MRU</small><br><span style="color:#2E7D32;">● متاح</span></div>`);
+                        .bindPopup(`<div style="font-family:Cairo;text-align:center;direction:rtl;"><strong>${data.name || 'سائق'}</strong><br><small>${vehicleLabel}</small><br><span style="color:#2E7D32;">● متاح</span></div>`);
                     driversMap[id] = { marker, data, isDelivery };
                 }
             });
@@ -1307,7 +1303,7 @@ function initRealtimeListeners() {
                     iconSize: [34, 34], iconAnchor: [17, 17]
                 });
                 const marker = L.marker([data.lat, data.lng], { icon }).addTo(map)
-                    .bindPopup(`<div style="font-family:Cairo;text-align:center;direction:rtl;"><strong>${data.name || 'زبون'}</strong><br><small>${data.phone || ''} | رصيد: ${data.credit || 0} MRU</small></div>`);
+                    .bindPopup(`<div style="font-family:Cairo;text-align:center;direction:rtl;"><strong>${data.name || 'زبون'}</strong><br><small>${data.phone || ''}</small></div>`);
                 customersMap[id] = { marker, data };
             }
         });
@@ -1328,7 +1324,6 @@ document.getElementById('registerDriverBtn').addEventListener('click', async () 
     const phone = document.getElementById('newDriverPhone').value.trim();
     const password = document.getElementById('newDriverPassword').value.trim();
     const vehicle = document.getElementById('newDriverVehicle')?.value || 'car';
-    const credit = parseNum(document.getElementById('newDriverCredit').value) || 0;
 
     if (!name) { showStatus(statusEl, 'أدخل اسم السائق', 'error'); return; }
     if (!phone) { showStatus(statusEl, 'أدخل رقم الهاتف', 'error'); return; }
@@ -1346,11 +1341,11 @@ document.getElementById('registerDriverBtn').addEventListener('click', async () 
         }
         await db.collection('drivers').add({
             name, phone, password, vehicleType: vehicle,
-            role: vehicle === 'bike' ? 'delivery' : 'driver', credit,
+            role: vehicle === 'bike' ? 'delivery' : 'driver',
             lat: 18.0735, lng: -15.9582, geohash: '',
             isOnline: false, disabled: false, currentRideId: null,
             rating: 5.0, totalRides: 0, fcmToken: '',
-            subscription: { active: false, type: vehicle === 'bike' ? 'monthly' : 'monthly', period: 'month' },
+            subscription: { active: false, type: 'monthly', period: 'month' },
             lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -1358,7 +1353,6 @@ document.getElementById('registerDriverBtn').addEventListener('click', async () 
         document.getElementById('newDriverName').value = '';
         document.getElementById('newDriverPhone').value = '';
         document.getElementById('newDriverPassword').value = '';
-        document.getElementById('newDriverCredit').value = '0';
         loadDriversList();
         if (vehicle === 'bike') loadDeliveryDrivers();
     } catch (err) {
@@ -1395,19 +1389,16 @@ function buildDriverRow(d) {
     const badgeClass = `badge bg-${status === 'online' ? 'success' : status === 'disabled' ? 'danger' : 'secondary'}`;
     const safeName = (d.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
     const canEdit = canPerm('drivers_edit');
-    const canCredit = canPerm('drivers_credit');
     const canDel = canPerm('drivers_delete');
     const canService = canPerm('drivers_service');
     return `<tr>
         <td><strong>${d.name || '-'}</strong></td>
         <td><span dir="ltr">${d.phone || '-'}</span></td>
         <td><span class="text-muted">${d.password ? '••••' : '-'}</span> ${canEdit ? `<button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="openPasswordModal('${d.id}','${safeName}')"><i class="bi bi-key"></i></button>` : ''}</td>
-        <td><strong>${d.credit || 0}</strong> MRU</td>
         <td><span class="${badgeClass}">${label}</span></td>
         <td>
             <div class="d-flex gap-1 flex-wrap">
                 ${canEdit ? `<button class="btn-action btn-action-edit" onclick="openEditModal('${d.id}','${safeName}','${d.phone||''}','${d.disabled?"disabled":"active"}')">تعديل</button>` : ''}
-                ${canCredit ? `<button class="btn-action btn-action-edit" style="background:#fff3cd;border-color:#ffc107;color:#856404" onclick="openEditCreditModal('${d.id}','${safeName}',${d.credit||0})">تعديل الرصيد</button>` : ''}
                 ${canEdit ? `<button class="btn-action btn-action-toggle" onclick="toggleDriverStatus('${d.id}',${d.disabled||false})">${d.disabled ? 'تفعيل' : 'تعطيل'}</button>` : ''}
                 ${canService && !d.disabled ? `<button class="btn-action ${d.isOnline ? 'btn-action-delete' : 'btn-action-on'}" onclick="toggleDriverService('${d.id}','${safeName}',${!d.isOnline})">${d.isOnline ? 'إيقاف الخدمة' : 'تشغيل الخدمة'}</button>` : ''}
                 ${canDel ? `<button class="btn-action btn-action-delete" onclick="openDeleteModal('${d.id}','${safeName}')">حذف</button>` : ''}
@@ -1420,7 +1411,7 @@ function renderDriversList(drivers) {
     const tbody = document.getElementById('driversTableBody');
     document.getElementById('totalDriversCount').textContent = drivers.length;
     if (drivers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">لا يوجد سائقون</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">لا يوجد سائقون</td></tr>';
         return;
     }
     tbody.innerHTML = drivers.map(buildDriverRow).join('');
@@ -1434,7 +1425,7 @@ let deliveryDrivers = [];
 async function loadDeliveryDrivers() {
     if (!requireDb()) return;
     const tbody = document.getElementById('deliveryDriversTableBody');
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل سائقي التوصيل...</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل سائقي التوصيل...</div></td></tr>';
     try {
         const snapshot = await db.collection('drivers').where('role', '==', 'delivery').get();
         deliveryDrivers = [];
@@ -1442,7 +1433,7 @@ async function loadDeliveryDrivers() {
         renderDeliveryDriversList(deliveryDrivers);
     } catch (err) {
         console.error('Load delivery drivers error:', err);
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">خطأ في تحميل البيانات</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-4">خطأ في تحميل البيانات</td></tr>';
     }
 }
 
@@ -1450,7 +1441,7 @@ function renderDeliveryDriversList(drivers) {
     const tbody = document.getElementById('deliveryDriversTableBody');
     document.getElementById('totalDeliveryDriversCount').textContent = drivers.length;
     if (drivers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">لا يوجد سائقو توصيل</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">لا يوجد سائقو توصيل</td></tr>';
         return;
     }
     tbody.innerHTML = drivers.map(buildDriverRow).join('');
@@ -1686,7 +1677,7 @@ window.exportUnregisteredCustomersCSV = function () {
 async function loadCustomersList() {
     if (!requireDb()) return;
     const tbody = document.getElementById('customersTableBody');
-    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل الزبائن...</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل الزبائن...</div></td></tr>';
     try {
         const snapshot = await db.collection('customers').get();
         allCustomers = [];
@@ -1694,7 +1685,7 @@ async function loadCustomersList() {
         renderCustomersList(allCustomers);
     } catch (err) {
         console.error('Load customers error:', err);
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger py-4">خطأ في تحميل البيانات</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">خطأ في تحميل البيانات</td></tr>';
     }
 }
 
@@ -1702,7 +1693,7 @@ function renderCustomersList(customers) {
     const tbody = document.getElementById('customersTableBody');
     document.getElementById('totalCustomersCount').textContent = customers.length;
     if (customers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">لا يوجد زبائن</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">لا يوجد زبائن</td></tr>';
         return;
     }
     tbody.innerHTML = customers.map(c => {
@@ -1711,20 +1702,17 @@ function renderCustomersList(customers) {
         const badgeClass = `badge bg-${status === 'online' ? 'success' : 'secondary'}`;
         const safeName = (c.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
         const canEditC = canPerm('customers_edit');
-        const canCreditC = canPerm('customers_credit');
         const canDelC = canPerm('customers_delete');
         return `<tr>
             <td><strong>${c.name || '-'}</strong></td>
             <td><span dir="ltr">${c.phone || '-'}</span></td>
             <td><span dir="ltr">${c.whatsapp || '-'}</span></td>
             <td><span class="text-muted">${c.password ? '••••' : '-'}</span> ${canEditC ? `<button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="openCustomerPasswordModal('${c.id}','${safeName}')"><i class="bi bi-key"></i></button>` : ''}</td>
-            <td><strong>${c.credit || 0}</strong> MRU</td>
             <td><span class="${badgeClass}">${label}</span></td>
             <td>${c.totalRides || 0}</td>
             <td>
                 <div class="d-flex gap-1 flex-wrap">
                     ${canEditC ? `<button class="btn-action btn-action-edit" onclick="openEditCustomerModal('${c.id}','${safeName}','${c.phone||''}','${c.whatsapp||''}')">تعديل</button>` : ''}
-                    ${canCreditC ? `<button class="btn-action btn-action-edit" style="background:#fff3cd;border-color:#ffc107;color:#856404" onclick="openEditCustomerCreditModal('${c.id}','${safeName}',${c.credit||0})">تعديل الرصيد</button>` : ''}
                     ${canDelC ? `<button class="btn-action btn-action-delete" onclick="openDeleteCustomerModal('${c.id}','${safeName}')">حذف</button>` : ''}
                 </div>
             </td>
@@ -1907,7 +1895,6 @@ function renderCustomerProfile(c, rides) {
                 <div class="col-md-4 col-6"><small class="text-muted d-block">الهاتف</small><span dir="ltr" class="fw-semibold">${escapeHtmlStr(c.phone || '-')}</span></div>
                 <div class="col-md-4 col-6"><small class="text-muted d-block">الواتساب</small><span dir="ltr" class="fw-semibold">${escapeHtmlStr(c.whatsapp || '-')}</span></div>
                 <div class="col-md-4 col-6"><small class="text-muted d-block">كلمة السر</small><span dir="ltr" class="fw-semibold">${escapeHtmlStr(c.password || '-')}</span></div>
-                <div class="col-md-4 col-6"><small class="text-muted d-block">الرصيد</small><span class="fw-bold text-dark-blue">${c.credit || 0} MRU</span></div>
                 <div class="col-md-4 col-6"><small class="text-muted d-block">عدد الرحلات</small><span class="fw-semibold">${c.totalRides || 0}</span></div>
                 <div class="col-md-4 col-6"><small class="text-muted d-block">تاريخ التسجيل</small><span class="fw-semibold">${created}</span></div>
                 <div class="col-md-4 col-6"><small class="text-muted d-block">آخر تحديث</small><span class="fw-semibold">${lastUpd}</span></div>
@@ -1928,7 +1915,6 @@ document.getElementById('registerCustomerBtn').addEventListener('click', async (
     const phone = document.getElementById('newCustomerPhone').value.trim();
     const whatsapp = document.getElementById('newCustomerWhatsapp').value.trim();
     const password = document.getElementById('newCustomerPassword').value.trim();
-    const credit = parseNum(document.getElementById('newCustomerCredit').value) || 0;
 
     if (!name) { showStatus(statusEl, 'أدخل اسم الزبون', 'error'); return; }
     if (!phone) { showStatus(statusEl, 'أدخل رقم الهاتف', 'error'); return; }
@@ -1938,7 +1924,7 @@ document.getElementById('registerCustomerBtn').addEventListener('click', async (
     btn.disabled = true; btn.textContent = 'جاري التسجيل...';
     try {
         await db.collection('customers').add({
-            name, phone, whatsapp, password, credit,
+            name, phone, whatsapp, password,
             lat: 18.0735, lng: -15.9582, geohash: '',
             isOnline: false, totalRides: 0, fcmToken: '', deviceId: '',
             lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1949,7 +1935,6 @@ document.getElementById('registerCustomerBtn').addEventListener('click', async (
         document.getElementById('newCustomerPhone').value = '';
         document.getElementById('newCustomerWhatsapp').value = '';
         document.getElementById('newCustomerPassword').value = '';
-        document.getElementById('newCustomerCredit').value = '0';
         loadCustomersList();
     } catch (err) {
         showStatus(statusEl, 'خطأ: ' + err.message, 'error');
@@ -1963,14 +1948,12 @@ document.getElementById('registerCustomerBtn').addEventListener('click', async (
 const editModal = new bootstrap.Modal(document.getElementById('editDriverModal'));
 const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
 const passwordModal = new bootstrap.Modal(document.getElementById('passwordModal'));
-const editCreditModal = new bootstrap.Modal(document.getElementById('editCreditModal'));
 const serviceConfirmModal = new bootstrap.Modal(document.getElementById('serviceConfirmModal'));
 
 // Customer modals
 const editCustomerModal = new bootstrap.Modal(document.getElementById('editCustomerModal'));
 const deleteCustomerModal = new bootstrap.Modal(document.getElementById('deleteCustomerModal'));
 const customerPasswordModal = new bootstrap.Modal(document.getElementById('customerPasswordModal'));
-const editCustomerCreditModal = new bootstrap.Modal(document.getElementById('editCustomerCreditModal'));
 const editAdminModal = new bootstrap.Modal(document.getElementById('editAdminModal'));
 
 window.openPasswordModal = function(id, name) {
@@ -1990,36 +1973,6 @@ document.getElementById('savePasswordBtn').addEventListener('click', async () =>
         await db.collection('drivers').doc(id).update({ password: newPass });
         passwordModal.hide();
         loadDriversList();
-    } catch (err) { ARAalert('خطأ: ' + err.message, 'error'); }
-});
-
-window.openEditCreditModal = function(id, name, current) {
-    document.getElementById('editCreditDriverId').value = id;
-    document.getElementById('editCreditDriverName').textContent = name;
-    document.getElementById('editCreditCurrent').textContent = current;
-    document.getElementById('editCreditNewValue').value = current;
-    editCreditModal.show();
-};
-
-document.getElementById('confirmEditCreditBtn').addEventListener('click', async () => {
-    if (!requireDb()) return;
-    if (!guardPerm('drivers_credit', 'ليست لديك صلاحية تعديل رصيد السائق')) return;
-    const id = document.getElementById('editCreditDriverId').value;
-    const newVal = parseNum(document.getElementById('editCreditNewValue').value);
-    if (newVal === null || newVal === undefined || isNaN(newVal) || newVal < 0) {
-        ARAalert('أدخل رصيد صحيح', 'warning'); return;
-    }
-    try {
-        await db.collection('drivers').doc(id).update({ credit: newVal });
-        editCreditModal.hide();
-        loadDriversList();
-        refreshDriverSearchResult();
-        notifyUser('drivers', id, {
-            type: 'credit_update',
-            title: 'تم تحديث رصيدك',
-            body: `أصبح رصيدك ${newVal} MRU`,
-            balance: String(newVal)
-        });
     } catch (err) { ARAalert('خطأ: ' + err.message, 'error'); }
 });
 
@@ -2099,35 +2052,6 @@ document.getElementById('saveCustomerPasswordBtn').addEventListener('click', asy
         await db.collection('customers').doc(id).update({ password: newPass });
         customerPasswordModal.hide();
         loadCustomersList();
-    } catch (err) { ARAalert('خطأ: ' + err.message, 'error'); }
-});
-
-window.openEditCustomerCreditModal = function(id, name, current) {
-    document.getElementById('editCustomerCreditId').value = id;
-    document.getElementById('editCustomerCreditName').textContent = name;
-    document.getElementById('editCustomerCreditCurrent').textContent = current;
-    document.getElementById('editCustomerCreditNewValue').value = current;
-    editCustomerCreditModal.show();
-};
-
-document.getElementById('confirmEditCustomerCreditBtn').addEventListener('click', async () => {
-    if (!requireDb()) return;
-    if (!guardPerm('customers_credit', 'ليست لديك صلاحية تعديل رصيد الزبون')) return;
-    const id = document.getElementById('editCustomerCreditId').value;
-    const newVal = parseNum(document.getElementById('editCustomerCreditNewValue').value);
-    if (newVal === null || newVal === undefined || isNaN(newVal) || newVal < 0) {
-        ARAalert('أدخل رصيد صحيح', 'warning'); return;
-    }
-    try {
-        await db.collection('customers').doc(id).update({ credit: newVal });
-        editCustomerCreditModal.hide();
-        loadCustomersList();
-        notifyUser('customers', id, {
-            type: 'credit_update',
-            title: 'تم تحديث رصيدك',
-            body: `أصبح رصيدك ${newVal} MRU`,
-            balance: String(newVal)
-        });
     } catch (err) { ARAalert('خطأ: ' + err.message, 'error'); }
 });
 
@@ -2675,10 +2599,10 @@ async function loadOverview() {
 // Export customers CSV
 window.exportCustomersCSV = function () {
     if (allCustomers.length === 0) { ARAalert('لا يوجد زبائن للتصدير', 'info'); return; }
-    let csv = '\uFEFF' + 'الاسم,الهاتف,الواتساب,الرصيد,الحالة,الرحلات\n';
+    let csv = '\uFEFF' + 'الاسم,الهاتف,الواتساب,الحالة,الرحلات\n';
     allCustomers.forEach(c => {
         const status = c.isOnline ? 'متصل' : 'غير متصل';
-        csv += `${c.name||''},${c.phone||''},${c.whatsapp||''},${c.credit||0},${status},${c.totalRides||0}\n`;
+        csv += `${c.name||''},${c.phone||''},${c.whatsapp||''},${status},${c.totalRides||0}\n`;
     });
     downloadCSV(csv, 'shater_customers.csv');
 };
@@ -3043,10 +2967,10 @@ async function loadStats() {
 // ============================================
 window.exportDriversCSV = function () {
     if (allDrivers.length === 0) { ARAalert('لا يوجد سائقون للتصدير', 'info'); return; }
-    let csv = '\uFEFF' + 'الاسم,الهاتف,الرصيد,الحالة,المجموعات\n';
+    let csv = '\uFEFF' + 'الاسم,الهاتف,الحالة,المجموعات\n';
     allDrivers.forEach(d => {
         const status = d.disabled ? 'معطّل' : (d.isOnline ? 'متاح' : 'غير متاح');
-        csv += `${d.name||''},${d.phone||''},${d.credit||0},${status},${d.totalRides||0}\n`;
+        csv += `${d.name||''},${d.phone||''},${status},${d.totalRides||0}\n`;
     });
     downloadCSV(csv, 'shater_drivers.csv');
 };
@@ -3163,7 +3087,7 @@ async function notifyDeliveryCustomer(deliveryId, payload) {
 
 // ============================================
 // SINGLE-USER PUSH (customer / driver)
-// type: credit_update | product_status | customer_announcement
+// type: product_status | customer_announcement
 // ============================================
 async function notifyUser(collectionName, docId, payload) {
     if (!requireDb()) return;
@@ -4095,8 +4019,7 @@ const FN_PERM = {
     deleteStore: 'stores', deleteSubscriptionRequest: 'recharge_approve',
     openCustomerPasswordModal: 'customers_edit', openDeleteCustomerModal: 'customers_delete',
     openDeleteModal: 'drivers_delete',
-    openEditAdminModal: 'admins', openEditCreditModal: 'drivers_credit',
-    openEditCustomerCreditModal: 'customers_credit', openEditCustomerModal: 'customers_edit',
+    openEditAdminModal: 'admins', openEditCustomerModal: 'customers_edit',
     openEditModal: 'drivers_edit', openPasswordModal: 'drivers_edit',
     rejectCustomerProduct: 'products', rejectRechargeRequest: 'recharge_approve',
     setDeliveryStatus: 'deliveries', toggleCustomerProduct: 'products',
@@ -4106,8 +4029,6 @@ const FN_PERM = {
 
 const ID_PERM = {
     registerDriverBtn: 'drivers_add', registerCustomerBtn: 'customers_add',
-    confirmEditCreditBtn: 'drivers_credit',
-    confirmEditCustomerCreditBtn: 'customers_credit',
     confirmDeleteBtn: 'drivers_delete', confirmDeleteCustomerBtn: 'customers_delete',
     confirmServiceBtn: 'drivers_service', savePasswordBtn: 'drivers_edit',
     saveCustomerPasswordBtn: 'customers_edit', saveEditBtn: 'drivers_edit',
@@ -5317,7 +5238,6 @@ async function loadDevices() {
             const d = doc.data();
             const name = d.name || '-';
             const phone = d.phone || '-';
-            const credit = (d.credit === undefined || d.credit === null) ? 0 : d.credit;
             const createdAt = d.createdAt || null;
             const disabled = isDriver ? !!d.disabled : null;
             const did = (d.deviceId || '').trim();
@@ -5325,7 +5245,7 @@ async function loadDevices() {
             const model = d.deviceModel || '';
             if (brand) brandCount[brand] = (brandCount[brand] || 0) + 1;
             if (!did) {
-                unknownAccounts.push({ id: doc.id, role, isDriver, name, phone, credit, createdAt, disabled });
+                unknownAccounts.push({ id: doc.id, role, isDriver, name, phone, createdAt, disabled });
                 return;
             }
             if (!devices.has(did)) devices.set(did, { deviceId: did, brand, model, roles: new Set(), accounts: [] });
@@ -5333,7 +5253,7 @@ async function loadDevices() {
             dev.roles.add(role);
             if (brand && !dev.brand) dev.brand = brand;
             if (model && !dev.model) dev.model = model;
-            dev.accounts.push({ name, phone, credit, createdAt, isDriver, isOnline: isDriver ? !!d.isOnline : null, disabled });
+            dev.accounts.push({ name, phone, createdAt, isDriver, isOnline: isDriver ? !!d.isOnline : null, disabled });
         };
 
         sd.forEach(doc => handle(doc, 'سائق', true));
@@ -5376,7 +5296,7 @@ async function loadDevices() {
                     if (a.disabled) badges.push('<span class="badge bg-danger">معطّل</span>');
                 }
                 return `<div class="mb-1"><strong>${escapeHtmlStr(a.name)}</strong> <span dir="ltr">${escapeHtmlStr(a.phone)}</span> ${badges.join(' ')}</div>` +
-                    `<div class="small text-muted">الرصيد: <strong class="text-gold">${a.credit} MRU</strong> · سُجّل: ${fmtDevDate(a.createdAt)}</div>`;
+                    `<div class="small text-muted">سُجّل: ${fmtDevDate(a.createdAt)}</div>`;
             }).join('<div class="my-1 border-top"></div>');
             rows.push(`<tr>
                 <td>${rows.length + 1}</td>
@@ -5407,7 +5327,7 @@ function renderUnknownDevices(accounts, canDelDriver, canDelCustomer) {
     if (countEl) countEl.textContent = accounts.length;
     if (!tbody) return;
     if (accounts.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">لا توجد حسابات بلا معرّف جهاز</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">لا توجد حسابات بلا معرّف جهاز</td></tr>';
         return;
     }
     tbody.innerHTML = accounts.map((a, i) => {
@@ -5422,7 +5342,6 @@ function renderUnknownDevices(accounts, canDelDriver, canDelCustomer) {
             <td>${roleBadge}</td>
             <td><strong>${escapeHtmlStr(a.name)}</strong></td>
             <td><span dir="ltr">${escapeHtmlStr(a.phone)}</span></td>
-            <td><strong class="text-gold">${a.credit} MRU</strong></td>
             <td>${fmtDevDate(a.createdAt)}</td>
             <td>${delBtn}</td>
         </tr>`;

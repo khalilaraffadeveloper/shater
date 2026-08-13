@@ -407,10 +407,6 @@
                                                 <option value="bike">دراجة / توصيل (تطبيق التوصيل)</option>
                                             </select>
                                         </div>
-                                        <div class="col-md-3 col-6">
-                                            <label class="form-label fw-bold">الرصيد (MRU)</label>
-                                            <input type="text" class="form-control" id="newDriverCredit" value="" inputmode="numeric" placeholder="0" autocomplete="off">
-                                        </div>
                                     </div>
                                     <button class="btn btn-dark-blue text-white fw-bold mt-3" id="registerDriverBtn">
                                         <i class="bi bi-check-circle me-1"></i>تسجيل السائق
@@ -474,13 +470,12 @@
                                                 <th>الاسم</th>
                                                 <th>الهاتف</th>
                                                 <th>كلمة السور</th>
-                                                <th>الرصيد</th>
                                                 <th>الحالة</th>
                                                 <th>إجراءات</th>
                                             </tr>
                                         </thead>
                                         <tbody id="driversTableBody">
-                                            <tr><td colspan="6" class="text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل السائقين...</div></td></tr>
+                                            <tr><td colspan="5" class="text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل السائقين...</div></td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -519,10 +514,6 @@
                                         <div class="col-md-3 col-6">
                                             <label class="form-label fw-bold">كلمة السر</label>
                                             <input type="password" class="form-control" id="newCustomerPassword" placeholder="كلمة السر" autocomplete="new-password">
-                                        </div>
-                                        <div class="col-md-3 col-6">
-                                            <label class="form-label fw-bold">الرصيد (MRU)</label>
-                                            <input type="text" class="form-control" id="newCustomerCredit" value="" inputmode="numeric" placeholder="0" autocomplete="off">
                                         </div>
                                     </div>
                                     <button class="btn btn-dark-blue text-white fw-bold mt-3" id="registerCustomerBtn">
@@ -579,14 +570,13 @@
                                                 <th>الهاتف</th>
                                                 <th>الواتساب</th>
                                                 <th>كلمة السر</th>
-                                                <th>الرصيد</th>
                                                 <th>الحالة</th>
                                                 <th>الرحلات</th>
                                                 <th>إجراءات</th>
                                             </tr>
                                         </thead>
                                         <tbody id="customersTableBody">
-                                            <tr><td colspan="8" class="text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل الزبائن...</div></td></tr>
+                                            <tr><td colspan="7" class="text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل الزبائن...</div></td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -671,13 +661,12 @@
                                                     <th>الدور</th>
                                                     <th>الاسم</th>
                                                     <th>الهاتف</th>
-                                                    <th>الرصيد</th>
                                                     <th>تاريخ التسجيل</th>
                                                     <th>إجراءات</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="devUnknownTableBody">
-                                                <tr><td colspan="7" class="text-center text-muted py-3">لا توجد حسابات بلا معرّف جهاز</td></tr>
+                                                <tr><td colspan="6" class="text-center text-muted py-3">لا توجد حسابات بلا معرّف جهاز</td></tr>
                                             </tbody>
                                         </table>
                                     </div>
@@ -1593,13 +1582,12 @@
                                                 <th>الاسم</th>
                                                 <th>الهاتف</th>
                                                 <th>كلمة السر</th>
-                                                <th>الرصيد</th>
                                                 <th>الحالة</th>
                                                 <th>إجراءات</th>
                                             </tr>
                                         </thead>
                                         <tbody id="deliveryDriversTableBody">
-                                            <tr><td colspan="6" class="text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل سائقي التوصيل...</div></td></tr>
+                                            <tr><td colspan="5" class="text-center py-4"><div class="SHATER-spinner"></div><div class="mt-2 text-muted small">جاري تحميل سائقي التوصيل...</div></td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -1661,31 +1649,6 @@
                 <div class="modal-footer border-top">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
                     <button type="button" class="btn btn-dark-blue text-white fw-bold" id="savePasswordBtn">حفظ كلمة السور</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- CREDIT MODAL -->
-    <!-- EDIT CREDIT MODAL -->
-    <div class="modal fade" id="editCreditModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content rounded-4 border-0 shadow-lg">
-                <div class="modal-header border-bottom">
-                    <h6 class="fw-bold">تعديل الرصيد</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" id="editCreditDriverId">
-                    <p class="mb-1">السائق: <strong id="editCreditDriverName"></strong></p>
-                    <p class="mb-3">الرصيد الحالي: <strong class="text-gold" id="editCreditCurrent"></strong> MRU</p>
-                    <label class="form-label fw-bold">الرصيد الجديد (MRU)</label>
-                    <input type="number" class="form-control fw-bold" id="editCreditNewValue" placeholder="أدخل الرصيد الجديد" min="0">
-                    <small class="text-muted">سيتم استبدال الرصيد الحالي بالقيمة الجديدة</small>
-                </div>
-                <div class="modal-footer border-top">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" class="btn btn-warning text-dark fw-bold" id="confirmEditCreditBtn">حفظ التعديل</button>
                 </div>
             </div>
         </div>
@@ -1782,30 +1745,6 @@
                 <div class="modal-footer border-top">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
                     <button type="button" class="btn btn-dark-blue text-white fw-bold" id="saveCustomerPasswordBtn">حفظ كلمة السر</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- EDIT CUSTOMER CREDIT MODAL -->
-    <div class="modal fade" id="editCustomerCreditModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content rounded-4 border-0 shadow-lg">
-                <div class="modal-header border-bottom">
-                    <h6 class="fw-bold">تعديل رصيد الزبون</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" id="editCustomerCreditId">
-                    <p class="mb-1">الزبون: <strong id="editCustomerCreditName"></strong></p>
-                    <p class="mb-3">الرصيد الحالي: <strong class="text-gold" id="editCustomerCreditCurrent"></strong> MRU</p>
-                    <label class="form-label fw-bold">الرصيد الجديد (MRU)</label>
-                    <input type="number" class="form-control fw-bold" id="editCustomerCreditNewValue" placeholder="أدخل الرصيد الجديد" min="0">
-                    <small class="text-muted">سيتم استبدال الرصيد الحالي بالقيمة الجديدة</small>
-                </div>
-                <div class="modal-footer border-top">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" class="btn btn-warning text-dark fw-bold" id="confirmEditCustomerCreditBtn">حفظ التعديل</button>
                 </div>
             </div>
         </div>
@@ -2120,7 +2059,7 @@
             load(0);
         })();
     </script>
-    <script src="js/app.js?v=20260813l"></script>
+    <script src="js/app.js?v=20260813m"></script>
 </body>
 </html>
 
