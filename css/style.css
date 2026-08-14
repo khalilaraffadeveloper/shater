@@ -89,34 +89,86 @@
 .offcanvas-body .sidebar-link:hover,
 .offcanvas-body .sidebar-link.active { background: rgba(255,106,0,0.14); color: var(--k-gold); }
 
-/* ============ DISPATCH PANEL (Custom RTL-safe) ============ */
+/* ============ DISPATCH PANEL (بطاقة عائمة قريبة من الخريطة) ============ */
 .dispatch-panel {
     position: fixed;
-    top: 0; bottom: 0;
-    left: 0;
-    width: 400px;
-    max-width: 100vw;
+    bottom: 92px;
+    left: 24px;
+    width: 410px;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 150px);
     background: #fff;
     z-index: 1100;
-    box-shadow: 4px 0 30px rgba(0,0,0,0.25);
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-    overflow-y: auto;
+    border-radius: 18px;
+    border: 1px solid rgba(212,168,67,0.3);
+    box-shadow: 0 16px 48px rgba(11,24,73,0.35);
+    transform: translateY(24px);
+    opacity: 0;
+    visibility: hidden;
+    transition: transform 0.3s ease, opacity 0.3s ease, visibility 0.3s;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 .dispatch-panel.open {
-    transform: translateX(0);
+    transform: translateY(0);
+    opacity: 1;
+    visibility: visible;
+}
+.dispatch-panel-header { flex-shrink: 0; }
+.dispatch-panel-body {
+    overflow-y: auto;
+    padding: 1rem;
 }
 .dispatch-panel-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.4);
+    background: rgba(0,0,0,0.35);
     z-index: 1090;
     opacity: 0;
+    pointer-events: none;
     transition: opacity 0.3s ease;
 }
 .dispatch-panel-overlay.show {
     opacity: 1;
+    pointer-events: auto;
 }
+
+/* تلميح أعلى الخريطة عند فتح لوحة الإطلاق (مبدأ النقرتين) */
+.dispatch-map-hint {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 600;
+    background: #fff;
+    color: #0B1849;
+    border: 2px solid var(--k-gold);
+    border-radius: 40px;
+    padding: 7px 16px;
+    font-weight: 700;
+    font-size: 13.5px;
+    font-family: 'Cairo', sans-serif;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.25);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    direction: rtl;
+}
+.dispatch-map-hint .hint-dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    background: #2E7D32;
+    flex-shrink: 0;
+}
+.dispatch-map-hint.step-dropoff { border-color: #C62828; }
+.dispatch-map-hint.step-dropoff .hint-dot { background: #C62828; }
 
 /* Floating dispatch FAB button */
 .dispatch-fab {
@@ -152,7 +204,25 @@
 }
 
 @media (max-width: 767.98px) {
-    .dispatch-panel { width: 100vw; }
+    .dispatch-panel {
+        left: 8px;
+        right: 8px;
+        width: auto;
+        max-width: none;
+        bottom: 84px;
+        max-height: calc(100vh - 110px);
+    }
+    .dispatch-map-hint {
+        top: 62px;
+        right: 8px;
+        left: 8px;
+        width: auto;
+        white-space: normal;
+        text-align: center;
+        justify-content: center;
+        font-size: 12.5px;
+        padding: 7px 12px;
+    }
 }
 
 /* ============ MAIN WRAPPER ============ */

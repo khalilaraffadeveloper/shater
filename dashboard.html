@@ -9,7 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20260814e" />
+    <link rel="stylesheet" href="css/style.css?v=20260814f" />
 </head>
 <body class="bg-light">
 
@@ -299,6 +299,10 @@
 
             <div class="map-wrapper position-relative" id="mapWrapper">
                 <div id="map" class="w-100 h-100"></div>
+                <div class="dispatch-map-hint d-none" id="dispatchMapHint">
+                    <span class="hint-dot">1</span>
+                    <span id="dispatchMapHintText">انقر على الخريطة لتحديد نقطة الانطلاق</span>
+                </div>
                 <div class="map-legend">
                     <div class="map-legend-title">الدليل</div>
                     <div class="map-legend-item"><span class="legend-dot" style="background:#0B1849;">🚗</span> سائق</div>
@@ -1818,45 +1822,45 @@
     <div class="dispatch-panel-overlay d-none" id="dispatchOverlay" onclick="toggleDispatchPanel()"></div>
     <div class="dispatch-panel admin-only" id="dispatchPanel">
         <div class="dispatch-panel-header bg-dark-blue text-white d-flex align-items-center justify-content-between p-3">
-            <h5 class="fw-bold mb-0"><i class="bi bi-car-front me-2"></i>إطلاق رحلة من اللوحة</h5>
+            <h5 class="fw-bold mb-0"><i class="bi bi-car-front me-2"></i>إطلاق رحلة نيابةً عن الزبون</h5>
             <button type="button" class="btn-close btn-close-white" onclick="toggleDispatchPanel()"></button>
         </div>
-        <div class="dispatch-panel-body p-3">
-            <div class="alert alert-warning py-2 small mb-3">يُنشأ الطلب عبر نظام الرحلات الموحد (يُنتظر سائق حتى 90 ثانية مع توسيع النطاق 2←3←4 كم). لا حاجة لوجود التطبيق عند الزبون.</div>
-            <div class="mb-3">
-                <label class="form-label fw-bold">اسم الزبون</label>
-                <input type="text" class="form-control" id="dName" placeholder="الاسم الكامل">
+        <div class="dispatch-panel-body">
+            <div class="d-flex align-items-start gap-2 alert alert-warning py-2 small mb-3">
+                <i class="bi bi-hand-index-thumb-fill"></i>
+                <span><strong>كيف تحدد النقطتين؟</strong> النقرة الأولى على الخريطة = الانطلاق، والنقرة الثانية = الوجهة. يُنتظر سائق حتى 90 ثانية مع توسيع النطاق 2←3←4 كم.</span>
             </div>
-            <div class="mb-3">
-                <label class="form-label fw-bold">هاتف الزبون</label>
-                <input type="tel" class="form-control" id="dPhone" placeholder="رقم الهاتف">
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-bold">نوع المركبة</label>
-                <select class="form-select" id="dVehicle" onchange="updateDispatchInfo()">
-                    <option value="car">سيارة</option>
-                    <option value="delivery">توصيل (دراجة)</option>
-                </select>
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-bold">نوع الرحلة</label>
-                <div class="btn-group w-100" role="group">
-                    <input type="radio" class="btn-check" name="dRideType" id="dTypeFixed" value="fixed" checked onchange="updateDispatchInfo()">
-                    <label class="btn btn-outline-dark-blue" for="dTypeFixed"><i class="bi bi-sign-turn-right-fill me-1"></i>عادية</label>
-                    <input type="radio" class="btn-check" name="dRideType" id="dTypeOpen" value="open" onchange="updateDispatchInfo()">
-                    <label class="btn btn-outline-dark-blue" for="dTypeOpen"><i class="bi bi-stopwatch-fill me-1"></i>جولة مفتوحة</label>
+            <div class="row g-2 mb-3">
+                <div class="col-6">
+                    <label class="form-label fw-bold mb-1">اسم الزبون</label>
+                    <input type="text" class="form-control" id="dName" placeholder="الاسم الكامل">
+                </div>
+                <div class="col-6">
+                    <label class="form-label fw-bold mb-1">هاتف الزبون</label>
+                    <input type="tel" class="form-control" id="dPhone" placeholder="رقم الهاتف">
                 </div>
             </div>
             <div class="mb-3">
-                <label class="form-label fw-bold"><span id="dPickupLabel" class="text-muted">نقطة الانطلاق (النقرة الأولى على الخريطة)</span></label>
+                <label class="form-label fw-bold mb-1">نوع الرحلة</label>
+                <div class="btn-group w-100" role="group">
+                    <input type="radio" class="btn-check" name="dRideType" id="dTypeFixed" value="car-fixed" checked onchange="updateDispatchInfo()">
+                    <label class="btn btn-outline-dark-blue" for="dTypeFixed"><i class="bi bi-car-front-fill me-1"></i>رحلة عادية</label>
+                    <input type="radio" class="btn-check" name="dRideType" id="dTypeOpen" value="car-open" onchange="updateDispatchInfo()">
+                    <label class="btn btn-outline-dark-blue" for="dTypeOpen"><i class="bi bi-stopwatch-fill me-1"></i>جولة مفتوحة</label>
+                    <input type="radio" class="btn-check" name="dRideType" id="dTypeDelivery" value="delivery-fixed" onchange="updateDispatchInfo()">
+                    <label class="btn btn-outline-dark-blue" for="dTypeDelivery"><i class="bi bi-bicycle me-1"></i>توصيل</label>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold mb-1"><span id="dPickupLabel" class="text-muted">نقطة الانطلاق (النقرة الأولى على الخريطة)</span></label>
                 <div class="input-group">
                     <input type="text" class="form-control" id="pickupCoords" placeholder="النقرة الأولى = الانطلاق" readonly tabindex="-1">
                     <button class="btn btn-outline-danger" id="clearPickup" tabindex="-1" title="مسح"><i class="bi bi-trash"></i></button>
                 </div>
                 <input type="text" class="form-control mt-2" id="pickupAddress" placeholder="عنوان الانطلاق (يُملأ تلقائياً)">
             </div>
-            <div class="mb-3">
-                <label class="form-label fw-bold"><span id="dDropoffLabel" class="text-muted">نقطة الوجهة (النقرة الثانية على الخريطة)</span></label>
+            <div class="mb-3" id="dDropoffBlock">
+                <label class="form-label fw-bold mb-1"><span id="dDropoffLabel" class="text-muted">نقطة الوجهة (النقرة الثانية على الخريطة)</span></label>
                 <div class="input-group">
                     <input type="text" class="form-control" id="dropoffCoords" placeholder="النقرة الثانية = الوجهة" readonly tabindex="-1">
                     <button class="btn btn-outline-danger" id="clearDropoff" tabindex="-1" title="مسح"><i class="bi bi-trash"></i></button>
@@ -2102,7 +2106,7 @@
             load(0);
         })();
     </script>
-    <script src="js/app.js?v=20260816"></script>
+    <script src="js/app.js?v=20260816a"></script>
 </body>
 </html>
 

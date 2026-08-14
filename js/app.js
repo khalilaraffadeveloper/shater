@@ -568,6 +568,7 @@ function initMap() {
             document.getElementById('dDropoffLabel').innerHTML = '<span class="text-success fw-bold">✓ نقطة الوجهة</span>';
             document.getElementById('dPickupLabel').innerHTML = '<span class="text-muted">نقطة الانطلاق (النقرة الأولى على الخريطة)</span>';
         }
+        updateDispatchHint();
         updateDispatchBtn();
     });
 }
@@ -6204,16 +6205,54 @@ let pickupCoords = null;
 let dropoffCoords = null;
 let mapClickMode = 'pickup'; // 'pickup' or 'dropoff'
 
+// نوع الرحلة الحالي من أزرار نوع الرحلة الثلاثة (عادية / جولة مفتوحة / توصيل)
+function currentDispatchType() {
+    const t = document.querySelector('input[name="dRideType"]:checked')?.value || 'car-fixed';
+    return {
+        vehicle: t.indexOf('delivery') === 0 ? 'delivery' : 'car',
+        isOpen: t === 'car-open'
+    };
+}
+
+// تلميح أعلى الخريطة يشرح الخطوة التالية (النقرة الأولى = انطلاق، الثانية = وجهة)
+function updateDispatchHint() {
+    const hint = document.getElementById('dispatchMapHint');
+    if (!hint) return;
+    if (!dispatchPanelOpen) { hint.classList.add('d-none'); return; }
+    const { isOpen } = currentDispatchType();
+    const text = document.getElementById('dispatchMapHintText');
+    const dot = hint.querySelector('.hint-dot');
+    if (!pickupCoords) {
+        hint.classList.remove('step-dropoff');
+        dot.textContent = '1';
+        text.textContent = isOpen
+            ? 'انقر على الخريطة لتحديد نقطة الانطلاق (جولة مفتوحة)'
+            : 'انقر على الخريطة لتحديد نقطة الانطلاق';
+        hint.classList.remove('d-none');
+    } else if (!isOpen && !dropoffCoords) {
+        hint.classList.add('step-dropoff');
+        dot.textContent = '2';
+        text.textContent = 'تم تحديد الانطلاق — انقر الآن لتحديد نقطة الوجهة';
+        hint.classList.remove('d-none');
+    } else {
+        hint.classList.add('d-none');
+    }
+}
+
 window.toggleDispatchPanel = function () {
     dispatchPanelOpen = !dispatchPanelOpen;
     document.getElementById('dispatchPanel').classList.toggle('open', dispatchPanelOpen);
     document.getElementById('dispatchOverlay').classList.toggle('show', dispatchPanelOpen);
     document.getElementById('dispatchOverlay').classList.toggle('d-none', !dispatchPanelOpen);
     if (dispatchPanelOpen) {
+        updateDispatchInfo();
+        updateDispatchHint();
         setTimeout(() => {
             const f = document.getElementById('dName');
             if (f) f.focus();
         }, 350);
+    } else {
+        updateDispatchHint();
     }
 };
 
@@ -6222,6 +6261,7 @@ function closeDispatchPanel() {
     document.getElementById('dispatchPanel').classList.remove('open');
     document.getElementById('dispatchOverlay').classList.remove('show');
     setTimeout(() => document.getElementById('dispatchOverlay').classList.add('d-none'), 300);
+    updateDispatchHint();
 }
 
 function setPickupPoint(lat, lng) {
@@ -6269,9 +6309,17 @@ function drawDispatchRoute() {
 }
 
 function updateDispatchInfo() {
-    const isOpen = document.querySelector('input[name="dRideType"]:checked')?.value === 'open';
+    const { vehicle, isOpen } = currentDispatchType();
     const info = document.getElementById('dispatchInfo');
-    const vehicle = document.getElementById('dVehicle').value;
+    const dBlock = document.getElementById('dDropoffBlock');
+    if (dBlock) dBlock.classList.toggle('d-none', isOpen);
+    if (isOpen) {
+        if (dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
+        dropoffCoords = null;
+        const dc = document.getElementById('dropoffCoords');
+        if (dc) dc.value = '';
+        drawDispatchRoute();
+    }
     if (isOpen || !pickupCoords || !dropoffCoords) {
         if (info) info.classList.add('d-none');
     } else {
@@ -6280,6 +6328,7 @@ function updateDispatchInfo() {
         document.getElementById('dFare').textContent = `${bkPriceFor(vehicle, dist)} MRU`;
         if (info) info.classList.remove('d-none');
     }
+    updateDispatchHint();
     updateDispatchBtn();
 }
 
@@ -6288,7 +6337,7 @@ function updateDispatchBtn() {
     if (!btn) return;
     const name = document.getElementById('dName').value.trim();
     const phone = document.getElementById('dPhone').value.trim();
-    const isOpen = document.querySelector('input[name="dRideType"]:checked')?.value === 'open';
+    const { isOpen } = currentDispatchType();
     btn.disabled = !(name && phone && pickupCoords && (isOpen || dropoffCoords));
 }
 
@@ -6307,8 +6356,10 @@ function resetDispatchForm() {
     document.getElementById('dropoffCoords').placeholder = 'النقرة الثانية = الوجهة';
     document.getElementById('dPickupLabel').innerHTML = '<span class="text-muted">نقطة الانطلاق (النقرة الأولى على الخريطة)</span>';
     document.getElementById('dDropoffLabel').innerHTML = '<span class="text-muted">نقطة الوجهة (النقرة الثانية على الخريطة)</span>';
+    document.getElementById('dDropoffBlock')?.classList.remove('d-none');
     document.getElementById('dispatchInfo').classList.add('d-none');
     document.getElementById('dispatchStatus').textContent = '';
+    updateDispatchHint();
     updateDispatchBtn();
 }
 
@@ -6346,8 +6397,7 @@ window.submitDispatchRide = async function () {
     if (!requireDb('dispatchStatus')) return;
     const name = document.getElementById('dName').value.trim();
     const phone = document.getElementById('dPhone').value.trim();
-    const vehicle = document.getElementById('dVehicle').value;
-    const isOpen = document.querySelector('input[name="dRideType"]:checked')?.value === 'open';
+    const { vehicle, isOpen } = currentDispatchType();
     if (!name || !phone) { showStatus('dispatchStatus', 'أدخل اسم الزبون وهاتفه', 'error'); return; }
     if (!pickupCoords) { showStatus('dispatchStatus', 'النقرة الأولى على الخريطة = نقطة الانطلاق', 'error'); return; }
     if (!isOpen && !dropoffCoords) { showStatus('dispatchStatus', 'النقرة الثانية على الخريطة = الوجهة', 'error'); return; }
